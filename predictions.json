@@ -30,7 +30,7 @@
       "home_p75": 27.0,
       "away_p25": 16.0,
       "away_p75": 27.0,
-      "ats_pick": "NE -3.0",
+      "ats_pick": "NE +3.0",
       "ats_team": "NE",
       "ats_edge": 3.9,
       "ou_pick": "UNDER 50.5",
@@ -244772,7 +244772,9 @@
             5
           ]
         }
-      }
+      },
+      "ats_cover_pct": 60.7,
+      "ou_cover_pct": 75.2
     },
     {
       "game_id": "2026_07_PIT_NO",
@@ -244799,7 +244801,7 @@
       "home_p75": 31.0,
       "away_p25": 16.0,
       "away_p75": 27.0,
-      "ats_pick": "NO -3.5",
+      "ats_pick": "NO +3.5",
       "ats_team": "NO",
       "ats_edge": 7.4,
       "ou_pick": "OVER 44.5",
@@ -489564,7 +489566,9 @@
             5
           ]
         }
-      }
+      },
+      "ats_cover_pct": 70.8,
+      "ou_cover_pct": 56.9
     },
     {
       "game_id": "2026_07_CIN_BAL",
@@ -489591,7 +489595,7 @@
       "home_p75": 34.0,
       "away_p25": 14.0,
       "away_p75": 27.0,
-      "ats_pick": "BAL -1.5",
+      "ats_pick": "BAL +1.5",
       "ats_team": "BAL",
       "ats_edge": 8.4,
       "ou_pick": "OVER 48.5",
@@ -734166,7 +734170,9 @@
             12
           ]
         }
-      }
+      },
+      "ats_cover_pct": 72.0,
+      "ou_cover_pct": 51.1
     },
     {
       "game_id": "2026_07_CLE_TEN",
@@ -734193,7 +734199,7 @@
       "home_p75": 27.0,
       "away_p25": 10.0,
       "away_p75": 23.0,
-      "ats_pick": "TEN -1.5",
+      "ats_pick": "TEN +1.5",
       "ats_team": "TEN",
       "ats_edge": 5.7,
       "ou_pick": "OVER 37.5",
@@ -978601,7 +978607,9 @@
             2
           ]
         }
-      }
+      },
+      "ats_cover_pct": 63.7,
+      "ou_cover_pct": 50.4
     },
     {
       "game_id": "2026_07_IND_MIN",
@@ -978628,7 +978636,7 @@
       "home_p75": 30.0,
       "away_p25": 15.0,
       "away_p75": 27.0,
-      "ats_pick": "IND -6.5",
+      "ats_pick": "IND +6.5",
       "ats_team": "IND",
       "ats_edge": 3.8,
       "ou_pick": "OVER 41.5",
@@ -1223036,7 +1223044,9 @@
             2
           ]
         }
-      }
+      },
+      "ats_cover_pct": 61.0,
+      "ou_cover_pct": 62.4
     },
     {
       "game_id": "2026_07_MIA_NYJ",
@@ -1223063,7 +1223073,7 @@
       "home_p75": 34.0,
       "away_p25": 13.0,
       "away_p75": 26.0,
-      "ats_pick": "NYJ +4.5",
+      "ats_pick": "NYJ -4.5",
       "ats_team": "NYJ",
       "ats_edge": 3.7,
       "ou_pick": "OVER 39.5",
@@ -1467661,7 +1467671,9 @@
             6
           ]
         }
-      }
+      },
+      "ats_cover_pct": 58.1,
+      "ou_cover_pct": 72.0
     },
     {
       "game_id": "2026_07_NYG_HOU",
@@ -1467688,7 +1467700,7 @@
       "home_p75": 31.0,
       "away_p25": 10.0,
       "away_p75": 21.0,
-      "ats_pick": "NYG -10.5",
+      "ats_pick": "NYG +10.5",
       "ats_team": "NYG",
       "ats_edge": 1.8,
       "ou_pick": "UNDER 42.5",
@@ -1712263,7 +1712275,9 @@
             5
           ]
         }
-      }
+      },
+      "ats_cover_pct": 57.0,
+      "ou_cover_pct": 58.6
     },
     {
       "game_id": "2026_07_SF_ATL",
@@ -1712290,7 +1712304,7 @@
       "home_p75": 28.0,
       "away_p25": 16.0,
       "away_p75": 29.0,
-      "ats_pick": "ATL -3.0",
+      "ats_pick": "ATL +3.0",
       "ats_team": "ATL",
       "ats_edge": 2.2,
       "ou_pick": "UNDER 49.5",
@@ -1957055,7 +1957069,9 @@
             7
           ]
         }
-      }
+      },
+      "ats_cover_pct": 55.6,
+      "ou_cover_pct": 65.2
     },
     {
       "game_id": "2026_07_TB_CAR",
@@ -1957082,7 +1957098,7 @@
       "home_p75": 27.0,
       "away_p25": 17.0,
       "away_p75": 30.0,
-      "ats_pick": "TB -3.0",
+      "ats_pick": "TB +3.0",
       "ats_team": "TB",
       "ats_edge": 5.2,
       "ou_pick": "OVER 44.5",
@@ -2201490,7 +2201506,9 @@
             4
           ]
         }
-      }
+      },
+      "ats_cover_pct": 63.8,
+      "ou_cover_pct": 50.1
     },
     {
       "game_id": "2026_07_DEN_ARI",
@@ -2201517,7 +2201535,7 @@
       "home_p75": 27.0,
       "away_p25": 16.0,
       "away_p75": 28.0,
-      "ats_pick": "ARI -4.5",
+      "ats_pick": "ARI +4.5",
       "ats_team": "ARI",
       "ats_edge": 3.8,
       "ou_pick": "OVER 43.5",
@@ -2446282,7 +2446300,9 @@
             3
           ]
         }
-      }
+      },
+      "ats_cover_pct": 62.7,
+      "ou_cover_pct": 50.4
     },
     {
       "game_id": "2026_07_GB_DET",
@@ -2446309,7 +2446329,7 @@
       "home_p75": 28.0,
       "away_p25": 17.0,
       "away_p75": 31.0,
-      "ats_pick": "GB -3.0",
+      "ats_pick": "GB +3.0",
       "ats_team": "GB",
       "ats_edge": 5.8,
       "ou_pick": "UNDER 53.5",
@@ -2690550,7 +2690570,9 @@
             4
           ]
         }
-      }
+      },
+      "ats_cover_pct": 65.1,
+      "ou_cover_pct": 72.4
     },
     {
       "game_id": "2026_07_LA_LV",
@@ -2690577,7 +2690599,7 @@
       "home_p75": 29.0,
       "away_p25": 14.0,
       "away_p75": 27.0,
-      "ats_pick": "LV -4.5",
+      "ats_pick": "LV +4.5",
       "ats_team": "LV",
       "ats_edge": 6.3,
       "ou_pick": "UNDER 48.5",
@@ -2935152,7 +2935174,9 @@
             3
           ]
         }
-      }
+      },
+      "ats_cover_pct": 68.8,
+      "ou_cover_pct": 67.1
     },
     {
       "game_id": "2026_07_KC_SEA",
@@ -2935179,7 +2935203,7 @@
       "home_p75": 26.0,
       "away_p25": 14.0,
       "away_p75": 27.0,
-      "ats_pick": "KC -2.5",
+      "ats_pick": "KC +2.5",
       "ats_team": "KC",
       "ats_edge": 4.1,
       "ou_pick": "UNDER 42.5",
@@ -3179754,7 +3179778,9 @@
             6
           ]
         }
-      }
+      },
+      "ats_cover_pct": 58.7,
+      "ou_cover_pct": 58.1
     },
     {
       "game_id": "2026_07_DAL_PHI",
@@ -3179781,7 +3179807,7 @@
       "home_p75": 31.0,
       "away_p25": 13.0,
       "away_p75": 24.0,
-      "ats_pick": "PHI -4.5",
+      "ats_pick": "PHI +4.5",
       "ats_team": "PHI",
       "ats_edge": 10.0,
       "ou_pick": "UNDER 44.5",
@@ -3424022,7 +3424048,9 @@
             9
           ]
         }
-      }
+      },
+      "ats_cover_pct": 76.9,
+      "ou_cover_pct": 55.2
     }
   ]
 }
