@@ -153,8 +153,11 @@
 
       <!-- Modal Navigation Tabs -->
       <div class="flex flex-wrap items-center gap-2 border-b border-[var(--border)] pb-3">
-        <button id="modal-tab-covar" onclick="switchModalTab('covar')" class="px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors">
-          Same-Game Covariates
+        <button id="modal-tab-combo" onclick="switchModalTab('combo')" class="px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors">
+          Combo Props
+        </button>
+        <button id="modal-tab-gamelines" onclick="switchModalTab('gamelines')" class="px-4 py-2 text-xs font-bold rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition-colors">
+          Game Lines
         </button>
         <button id="modal-tab-players" onclick="switchModalTab('players')" class="px-4 py-2 text-xs font-bold rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition-colors">
           Player Stat Deciles
@@ -165,7 +168,11 @@
       </div>
 
       <!-- Modal Body Views -->
-      <div id="modal-covar-view" class="space-y-5">
+      <div id="modal-combo-view" class="space-y-5">
+        <!-- Rendered by JS -->
+      </div>
+
+      <div id="modal-gamelines-view" class="space-y-5 hidden">
         <!-- Rendered by JS -->
       </div>
 
@@ -196,20 +203,18 @@
     let activeTeamSide = 'home';
     let activePosFilter = 'ALL';
 
-    // Covariance State
-    let covarState = {
-      c1_side: 'home',
-      c1_stat: 'qb_pass_yds',
-      c1_thresh: 250,
-      total_type: 'over',
-      total_thresh: 42.0,
-      margin_side: 'home',
-      margin_thresh: 10.0,
-      c4_active: false,
-      c4_side: 'home',
-      c4_stat: 'rb_rush_yds',
-      c4_thresh: 60.0,
-    };
+    // Combo Props State (Dynamic Multi-Leg Builder)
+    let comboLegs = [];
+    let nextLegId = 1;
+    let lastLoadedModalGid = null;
+
+    // Game Lines State
+    let gameLinesTotal = null;
+    let customMarginSide = 'home';
+    let customMarginType = 'win';
+    let customMarginVal = 1.0;
+    let customTotalOp = 'over';
+    let customTotalVal = null;
 
     function renderGames() {
       const container = document.getElementById('games-grid');
@@ -351,7 +356,7 @@
             <!-- Footer: Quick Stats & Details Action -->
             <div class="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between">
               <span class="text-xs font-semibold text-[var(--primary)] flex items-center gap-1">
-                Player Deciles & Covariates →
+                Combo Props, Game Lines & Deciles →
               </span>
               <span class="text-xs text-[var(--muted-foreground)]">
                 ${(g.players?.home || []).length + (g.players?.away || []).length} Skill Players
@@ -364,46 +369,54 @@
     }
 
     function switchModalTab(tab) {
-      const covarBtn = document.getElementById('modal-tab-covar');
+      const comboBtn = document.getElementById('modal-tab-combo');
+      const gamelinesBtn = document.getElementById('modal-tab-gamelines');
       const playersBtn = document.getElementById('modal-tab-players');
       const teamBtn = document.getElementById('modal-tab-team');
       
-      const covarView = document.getElementById('modal-covar-view');
+      const comboView = document.getElementById('modal-combo-view');
+      const gamelinesView = document.getElementById('modal-gamelines-view');
       const playersView = document.getElementById('modal-players-view');
       const teamView = document.getElementById('modal-team-view');
 
-      [covarBtn, playersBtn, teamBtn].forEach(b => {
-        b.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition-colors';
+      [comboBtn, gamelinesBtn, playersBtn, teamBtn].forEach(b => {
+        if (b) b.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition-colors';
       });
-      [covarView, playersView, teamView].forEach(v => v.classList.add('hidden'));
+      [comboView, gamelinesView, playersView, teamView].forEach(v => {
+        if (v) v.classList.add('hidden');
+      });
 
-      if (tab === 'covar') {
-        covarBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
-        covarView.classList.remove('hidden');
-        renderCovarianceView();
+      if (tab === 'combo') {
+        if (comboBtn) comboBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
+        if (comboView) comboView.classList.remove('hidden');
+        renderComboPropsView();
+      } else if (tab === 'gamelines') {
+        if (gamelinesBtn) gamelinesBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
+        if (gamelinesView) gamelinesView.classList.remove('hidden');
+        renderGameLinesView();
       } else if (tab === 'players') {
-        playersBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
-        playersView.classList.remove('hidden');
+        if (playersBtn) playersBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
+        if (playersView) playersView.classList.remove('hidden');
         renderPlayerProjectionsView();
       } else {
-        teamBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
-        teamView.classList.remove('hidden');
+        if (teamBtn) teamBtn.className = 'px-4 py-2 text-xs font-bold rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] transition-colors';
+        if (teamView) teamView.classList.remove('hidden');
       }
     }
 
     // ==========================================
-    // COVARIANCE & SAME-GAME PARLAY ENGINE
+    // UTILITIES & STAT HELPERS
     // ==========================================
-    function getMetricArr(sideData, statKey) {
-      return sideData[statKey] || [];
-    }
-
-    function getPlayerNameAndRole(sideData, statKey) {
-      if (!sideData) return 'Player';
-      if (statKey.startsWith('qb_')) return `${sideData.qb_name} (QB)`;
-      if (statKey.startsWith('rb_')) return `${sideData.rb_name} (RB)`;
-      if (statKey.startsWith('wr_')) return `${sideData.wr_name} (WR)`;
-      return 'Player';
+    function probToAmericanOdds(p) {
+      if (p <= 0.0001) return 'N/A';
+      if (p >= 0.9999) return '-10000';
+      if (p >= 0.5) {
+        const odds = Math.round((p / (1 - p)) * -100);
+        return odds <= -10000 ? '-10000' : `${odds}`;
+      } else {
+        const odds = Math.round(((1 - p) / p) * 100);
+        return odds >= 10000 ? '+10000' : `+${odds}`;
+      }
     }
 
     function getStatFriendlyName(statKey) {
@@ -422,67 +435,249 @@
       return map[statKey] || statKey.replace(/_/g, ' ');
     }
 
-    function renderCovarianceView() {
+    function getPlayerName(sideData, statKey) {
+      if (!sideData) return 'Player';
+      if (statKey.startsWith('qb_')) return sideData.qb_name || 'QB';
+      if (statKey.startsWith('rb_')) return sideData.rb_name || 'RB';
+      if (statKey.startsWith('wr_')) return sideData.wr_name || 'WR';
+      return 'Player';
+    }
+
+    function getPlayerRole(statKey) {
+      if (statKey.startsWith('qb_')) return 'QB';
+      if (statKey.startsWith('rb_')) return 'RB';
+      if (statKey.startsWith('wr_')) return 'WR';
+      return 'Skill';
+    }
+
+    // ==========================================
+    // VIEW 1: COMBO PROPS ENGINE (DYNAMIC ROWS)
+    // ==========================================
+    function evalComboLeg(leg, g, s, N) {
+      if (leg.category === 'player') {
+        const sideData = leg.side === 'home' ? s.home : s.away;
+        const arr = (sideData && sideData[leg.stat]) ? sideData[leg.stat] : [];
+        if (!arr.length) return new Array(N).fill(false);
+        const op = leg.op || '>=';
+        const val = Number(leg.val);
+        return arr.map(v => (op === '>=' ? v >= val : v <= val));
+      } else if (leg.category === 'gameline') {
+        const marginArr = s.margin; // positive = home win
+        const type = leg.type || 'win';
+        const side = leg.side || 'home';
+        if (type === 'win') {
+          return marginArr.map(m => (side === 'home' ? m >= 1 : -m >= 1));
+        } else if (type === 'spread') {
+          const spread = g.spread_line || 0;
+          return marginArr.map(m => (side === 'home' ? m > spread : m < spread));
+        } else if (type === 'margin') {
+          const thresh = Number(leg.val) || 1.0;
+          return marginArr.map(m => (side === 'home' ? m >= thresh : -m >= thresh));
+        }
+      } else if (leg.category === 'gametotal') {
+        const totalArr = s.total;
+        const op = leg.op || 'over';
+        const val = Number(leg.val);
+        return totalArr.map(t => (op === 'over' ? t >= val : t <= val));
+      }
+      return new Array(N).fill(true);
+    }
+
+    function getLegDisplaySummary(leg, g, s) {
+      if (leg.category === 'player') {
+        const sideData = leg.side === 'home' ? s.home : s.away;
+        const pName = getPlayerName(sideData, leg.stat);
+        const role = getPlayerRole(leg.stat);
+        const statName = getStatFriendlyName(leg.stat);
+        return `${pName} (${role}): ${statName} ${leg.op} ${leg.val}`;
+      } else if (leg.category === 'gameline') {
+        const teamName = leg.side === 'home' ? g.home_name : g.away_name;
+        if (leg.type === 'win') return `${teamName} Win Outright`;
+        if (leg.type === 'spread') {
+          const spText = g.spread_line > 0 ? (leg.side === 'home' ? `-${g.spread_line.toFixed(1)}` : `+${g.spread_line.toFixed(1)}`) : (leg.side === 'home' ? `+${Math.abs(g.spread_line).toFixed(1)}` : `-${Math.abs(g.spread_line).toFixed(1)}`);
+          return `${teamName} Cover Spread (${spText})`;
+        }
+        return `${teamName} Win Margin >= ${leg.val} pts`;
+      } else if (leg.category === 'gametotal') {
+        return `Game Total Points ${leg.op.toUpperCase()} ${leg.val} pts`;
+      }
+      return 'Prop Leg';
+    }
+
+    function initComboLegs(g) {
+      comboLegs = [
+        {
+          id: nextLegId++,
+          category: 'player',
+          side: 'home',
+          stat: 'qb_pass_yds',
+          op: '>=',
+          val: 250
+        },
+        {
+          id: nextLegId++,
+          category: 'gametotal',
+          op: 'over',
+          val: 42.0
+        },
+        {
+          id: nextLegId++,
+          category: 'gameline',
+          side: 'home',
+          type: 'margin',
+          val: 10.0
+        }
+      ];
+    }
+
+    function addComboLeg(category = 'player') {
+      const g = GAMES_DATA.find(x => x.game_id === activeModalGid);
+      const totalDef = (g && g.total_line) ? g.total_line : 43.5;
+      const leg = { id: nextLegId++, category };
+      if (category === 'player') {
+        leg.side = 'home';
+        leg.stat = 'qb_pass_yds';
+        leg.op = '>=';
+        leg.val = 250;
+      } else if (category === 'gameline') {
+        leg.side = 'home';
+        leg.type = 'win';
+        leg.val = 1.0;
+      } else if (category === 'gametotal') {
+        leg.op = 'over';
+        leg.val = totalDef;
+      }
+      comboLegs.push(leg);
+      renderComboPropsView();
+    }
+
+    function removeComboLeg(id) {
+      comboLegs = comboLegs.filter(l => l.id !== id);
+      renderComboPropsView();
+    }
+
+    function updateComboLeg(id, field, val) {
+      const leg = comboLegs.find(l => l.id === id);
+      if (!leg) return;
+      const g = GAMES_DATA.find(x => x.game_id === activeModalGid);
+
+      if (field === 'category') {
+        leg.category = val;
+        if (val === 'player') {
+          leg.side = leg.side || 'home';
+          leg.stat = 'qb_pass_yds';
+          leg.op = '>=';
+          leg.val = 250;
+        } else if (val === 'gameline') {
+          leg.side = leg.side || 'home';
+          leg.type = 'win';
+          leg.val = 1.0;
+        } else if (val === 'gametotal') {
+          leg.op = 'over';
+          leg.val = (g && g.total_line) ? g.total_line : 43.5;
+        }
+      } else if (field === 'stat') {
+        leg.stat = val;
+        if (val === 'qb_pass_yds') leg.val = 250;
+        else if (val === 'qb_pass_tds') leg.val = 2;
+        else if (val === 'qb_rush_yds') leg.val = 20;
+        else if (val === 'rb_rush_yds') leg.val = 65;
+        else if (val === 'rb_tot_yds') leg.val = 80;
+        else if (val === 'rb_rush_tds') leg.val = 1;
+        else if (val === 'rb_rec') leg.val = 3;
+        else if (val === 'wr_rec_yds') leg.val = 65;
+        else if (val === 'wr_rec_tds') leg.val = 1;
+        else if (val === 'wr_rec') leg.val = 5;
+      } else if (field === 'type') {
+        leg.type = val;
+        if (val === 'win') leg.val = 1.0;
+        else if (val === 'spread') leg.val = (g && g.spread_line) ? Math.abs(g.spread_line) : 3.0;
+        else if (val === 'margin') leg.val = 10.0;
+      } else {
+        leg[field] = val;
+      }
+      renderComboPropsView();
+    }
+
+    function setComboPreset(preset) {
+      const g = GAMES_DATA.find(x => x.game_id === activeModalGid);
+      const totalLine = (g && g.total_line) ? g.total_line : 43.5;
+      const spreadAbs = (g && g.spread_line) ? Math.abs(g.spread_line) : 3.0;
+      nextLegId = 1;
+
+      if (preset === 'user_250') {
+        comboLegs = [
+          { id: nextLegId++, category: 'player', side: 'home', stat: 'qb_pass_yds', op: '>=', val: 250 },
+          { id: nextLegId++, category: 'gametotal', op: 'over', val: 42.0 },
+          { id: nextLegId++, category: 'gameline', side: 'home', type: 'margin', val: 10.0 }
+        ];
+      } else if (preset === 'user_200') {
+        comboLegs = [
+          { id: nextLegId++, category: 'player', side: 'home', stat: 'qb_pass_yds', op: '>=', val: 200 },
+          { id: nextLegId++, category: 'gametotal', op: 'over', val: 42.0 },
+          { id: nextLegId++, category: 'gameline', side: 'home', type: 'margin', val: 10.0 }
+        ];
+      } else if (preset === 'shootout') {
+        comboLegs = [
+          { id: nextLegId++, category: 'gametotal', op: 'over', val: totalLine },
+          { id: nextLegId++, category: 'player', side: 'home', stat: 'qb_pass_tds', op: '>=', val: 2 },
+          { id: nextLegId++, category: 'player', side: 'away', stat: 'qb_pass_yds', op: '>=', val: 230 }
+        ];
+      } else if (preset === 'ground_pound') {
+        comboLegs = [
+          { id: nextLegId++, category: 'player', side: 'home', stat: 'rb_rush_yds', op: '>=', val: 70 },
+          { id: nextLegId++, category: 'gameline', side: 'home', type: 'win', val: 1.0 },
+          { id: nextLegId++, category: 'gametotal', op: 'under', val: totalLine }
+        ];
+      } else if (preset === 'fav_cover_under') {
+        const favSide = (g && g.p_home_win >= g.p_away_win) ? 'home' : 'away';
+        comboLegs = [
+          { id: nextLegId++, category: 'gameline', side: favSide, type: 'spread', val: spreadAbs },
+          { id: nextLegId++, category: 'gametotal', op: 'under', val: totalLine }
+        ];
+      }
+      renderComboPropsView();
+    }
+
+    function renderComboPropsView() {
       const g = GAMES_DATA.find(x => x.game_id === activeModalGid);
       if (!g || !g.sim_samples) return;
 
-      const container = document.getElementById('modal-covar-view');
+      const container = document.getElementById('modal-combo-view');
       const s = g.sim_samples;
       const N = s.n_sims || s.margin.length;
 
-      // 1. Evaluate Condition 1 (Primary Player Prop)
-      const c1SideData = covarState.c1_side === 'home' ? s.home : s.away;
-      const c1Player = getPlayerNameAndRole(c1SideData, covarState.c1_stat);
-      const c1StatName = getStatFriendlyName(covarState.c1_stat);
-      const c1Arr = getMetricArr(c1SideData, covarState.c1_stat);
-      const cond1_matches = c1Arr.map(v => v >= covarState.c1_thresh);
-
-      // 2. Evaluate Condition 2 (Game Total)
-      const totalArr = s.total;
-      const cond2_matches = totalArr.map(v => covarState.total_type === 'over' ? v >= covarState.total_thresh : v <= covarState.total_thresh);
-
-      // 3. Evaluate Condition 3 (Margin)
-      const marginArr = s.margin; // positive => home win
-      const cond3_matches = marginArr.map(v => {
-        if (covarState.margin_side === 'home') {
-          return v >= covarState.margin_thresh;
-        } else {
-          return -v >= covarState.margin_thresh;
-        }
+      // Evaluate each leg across all N game scripts
+      const legResults = comboLegs.map(leg => {
+        const matches = evalComboLeg(leg, g, s, N);
+        const count = matches.filter(Boolean).length;
+        const prob = count / N;
+        const summary = getLegDisplaySummary(leg, g, s);
+        return { leg, matches, count, prob, summary };
       });
 
-      // 4. Evaluate Condition 4 (Optional Skill Player Leg)
-      let cond4_matches = [];
-      let c4Player = '';
-      let c4StatName = '';
-      let p4 = 1.0;
-      if (covarState.c4_active) {
-        const c4SideData = covarState.c4_side === 'home' ? s.home : s.away;
-        c4Player = getPlayerNameAndRole(c4SideData, covarState.c4_stat);
-        c4StatName = getStatFriendlyName(covarState.c4_stat);
-        const c4Arr = getMetricArr(c4SideData, covarState.c4_stat);
-        cond4_matches = c4Arr.map(v => v >= covarState.c4_thresh);
-        p4 = cond4_matches.filter(Boolean).length / N;
-      }
-
-      // Compute Individual Rates
-      const p1 = cond1_matches.filter(Boolean).length / N;
-      const p2 = cond2_matches.filter(Boolean).length / N;
-      const p3 = cond3_matches.filter(Boolean).length / N;
-
-      // Compute Joint Co-occurrence Rate
+      // Joint Evaluation across all legs
       let joint_count = 0;
       for (let i = 0; i < N; i++) {
-        const match = cond1_matches[i] && cond2_matches[i] && cond3_matches[i] && (!covarState.c4_active || cond4_matches[i]);
-        if (match) joint_count++;
+        let allMatch = true;
+        for (let j = 0; j < legResults.length; j++) {
+          if (!legResults[j].matches[i]) {
+            allMatch = false;
+            break;
+          }
+        }
+        if (allMatch) joint_count++;
       }
-      const p_joint = joint_count / N;
-      const p_indep = covarState.c4_active ? (p1 * p2 * p3 * p4) : (p1 * p2 * p3);
+
+      const p_joint = legResults.length > 0 ? (joint_count / N) : 0;
+      const p_indep = legResults.length > 0 ? legResults.reduce((acc, r) => acc * r.prob, 1.0) : 0;
       const multiplier = p_indep > 0 ? (p_joint / p_indep) : (p_joint > 0 ? 99.0 : 1.0);
 
-      // Styling based on covariance multiplier
+      // Correlation / Synergy Badge
       let synergyBadge = '';
-      if (p_joint === 0 && p_indep > 0) {
+      if (legResults.length === 0) {
+        synergyBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-500/10 text-slate-300 border border-slate-500/20">No Legs Configured</span>`;
+      } else if (p_joint === 0 && p_indep > 0) {
         synergyBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">0 Observed Instances</span>`;
       } else if (multiplier >= 1.25) {
         synergyBadge = `<span class="px-2.5 py-1 rounded-md text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">Positive Correlation (+${Math.round((multiplier - 1) * 100)}%)</span>`;
@@ -498,215 +693,241 @@
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
               <div class="flex items-center gap-2">
-                <span class="text-sm font-bold text-[var(--foreground)]">Joint Covariates & Parlay Analysis</span>
+                <span class="text-sm font-bold text-[var(--foreground)]">Combo Props: Multi-Leg Covariance Builder</span>
                 <span class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">${N.toLocaleString()} Simulations</span>
               </div>
               <p class="text-xs text-[var(--muted-foreground)] mt-1">
-                Evaluates empirical co-occurrence rates across all simulated play-by-play game scripts versus naive independent odds.
+                Add custom player props, game lines, or over/under legs. The engine computes empirical co-occurrence rates across ${N.toLocaleString()} game scripts vs naive independent odds.
               </p>
             </div>
           </div>
 
           <!-- Presets -->
           <div class="pt-2.5 border-t border-[var(--border)] flex flex-wrap items-center gap-1.5">
-            <span class="text-xs font-semibold text-[var(--muted-foreground)] mr-1.5">Presets:</span>
-            <button onclick="setExamplePreset('user_250')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+            <span class="text-xs font-semibold text-[var(--muted-foreground)] mr-1.5">Quick Presets:</span>
+            <button onclick="setComboPreset('user_250')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
               QB 250+ / Over 42 / Win 10+
             </button>
-            <button onclick="setExamplePreset('user_200')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+            <button onclick="setComboPreset('user_200')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
               QB 200+ / Over 42 / Win 10+
             </button>
-            <button onclick="setExamplePreset('shootout')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
-              Shootout (Over 45 / QB 2+ TDs)
+            <button onclick="setComboPreset('shootout')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+              Shootout (Over Line / Dual QBs)
             </button>
-            <button onclick="setExamplePreset('ground_pound')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
-              Ground Game (RB 70+ / Margin 7+)
+            <button onclick="setComboPreset('ground_pound')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+              Ground Game (RB 70+ / Win / Under)
+            </button>
+            <button onclick="setComboPreset('fav_cover_under')" class="px-2.5 py-1 text-xs font-medium rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+              Spread Cover & Under
             </button>
           </div>
         </div>
 
-        <!-- Interactive Condition Selectors -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-          
-          <!-- Condition 1: Player Prop -->
-          <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-3.5 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Condition 1: Player Milestone</span>
-              <span class="text-xs font-bold text-emerald-500">${(p1 * 100).toFixed(1)}% prob</span>
-            </div>
-            
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Team Side:</label>
-              <select onchange="updateCovar('c1_side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-                <option value="home" ${covarState.c1_side === 'home' ? 'selected' : ''}>${g.home_name} (${g.home_team})</option>
-                <option value="away" ${covarState.c1_side === 'away' ? 'selected' : ''}>${g.away_name} (${g.away_team})</option>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Player Metric (Target: ${c1Player}):</label>
-              <select onchange="updateCovar('c1_stat', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-                <optgroup label="Quarterback">
-                  <option value="qb_pass_yds" ${covarState.c1_stat === 'qb_pass_yds' ? 'selected' : ''}>Passing Yards</option>
-                  <option value="qb_pass_tds" ${covarState.c1_stat === 'qb_pass_tds' ? 'selected' : ''}>Passing TDs</option>
-                  <option value="qb_rush_yds" ${covarState.c1_stat === 'qb_rush_yds' ? 'selected' : ''}>QB Rush Yards</option>
-                </optgroup>
-                <optgroup label="Running Back">
-                  <option value="rb_rush_yds" ${covarState.c1_stat === 'rb_rush_yds' ? 'selected' : ''}>RB Rushing Yards</option>
-                  <option value="rb_tot_yds" ${covarState.c1_stat === 'rb_tot_yds' ? 'selected' : ''}>RB Total Yards (Rush+Rec)</option>
-                  <option value="rb_rush_tds" ${covarState.c1_stat === 'rb_rush_tds' ? 'selected' : ''}>RB Rushing TDs</option>
-                  <option value="rb_rec" ${covarState.c1_stat === 'rb_rec' ? 'selected' : ''}>RB Receptions</option>
-                </optgroup>
-                <optgroup label="Wide Receiver">
-                  <option value="wr_rec_yds" ${covarState.c1_stat === 'wr_rec_yds' ? 'selected' : ''}>WR Receiving Yards</option>
-                  <option value="wr_rec_tds" ${covarState.c1_stat === 'wr_rec_tds' ? 'selected' : ''}>WR Receiving TDs</option>
-                  <option value="wr_rec" ${covarState.c1_stat === 'wr_rec' ? 'selected' : ''}>WR Receptions</option>
-                </optgroup>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Threshold (>=):</label>
-              <input 
-                type="number" 
-                step="${covarState.c1_stat.includes('tds') || covarState.c1_stat.includes('rec') ? '1' : '10'}" 
-                value="${covarState.c1_thresh}" 
-                onchange="updateCovar('c1_thresh', parseFloat(this.value))" 
-                class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
-              />
-            </div>
-          </div>
-
-          <!-- Condition 2: Game Total -->
-          <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-3.5 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Condition 2: Game Total</span>
-              <span class="text-xs font-bold text-emerald-500">${(p2 * 100).toFixed(1)}% prob</span>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Over or Under:</label>
-              <select onchange="updateCovar('total_type', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-                <option value="over" ${covarState.total_type === 'over' ? 'selected' : ''}>OVER (>= points)</option>
-                <option value="under" ${covarState.total_type === 'under' ? 'selected' : ''}>UNDER (<= points)</option>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Total Points Threshold:</label>
-              <div class="flex items-center gap-2">
-                <input type="number" step="0.5" value="${covarState.total_thresh}" onchange="updateCovar('total_thresh', parseFloat(this.value))" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" />
-                <span class="text-xs text-[var(--muted-foreground)] whitespace-nowrap">Vegas: ${g.total_line}</span>
-              </div>
-            </div>
-
-            <!-- Quick Threshold Buttons -->
-            <div class="flex gap-1 pt-1">
-              ${[38.5, 41.5, 44.5, 48.5].map(pts => `
-                <button onclick="updateCovar('total_thresh', ${pts})" class="flex-1 py-1 text-[10px] font-mono rounded bg-[var(--card)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors">
-                  ${pts}
-                </button>
-              `).join('')}
-            </div>
-          </div>
-
-          <!-- Condition 3: Winning Margin -->
-          <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-3.5 space-y-2.5">
-            <div class="flex items-center justify-between">
-              <span class="text-xs font-bold uppercase tracking-wider text-[var(--primary)]">Condition 3: Winning Margin</span>
-              <span class="text-xs font-bold text-emerald-500">${(p3 * 100).toFixed(1)}% prob</span>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Winning Team:</label>
-              <select onchange="updateCovar('margin_side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-                <option value="home" ${covarState.margin_side === 'home' ? 'selected' : ''}>${g.home_name} (${g.home_team})</option>
-                <option value="away" ${covarState.margin_side === 'away' ? 'selected' : ''}>${g.away_name} (${g.away_team})</option>
-              </select>
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-[11px] text-[var(--muted-foreground)] block">Win by Margin (>= pts):</label>
-              <select onchange="updateCovar('margin_thresh', parseFloat(this.value))" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono">
-                <option value="1.0" ${covarState.margin_thresh === 1.0 ? 'selected' : ''}>Win Outright (>= 1 pt)</option>
-                <option value="3.0" ${covarState.margin_thresh === 3.0 ? 'selected' : ''}>Win by Field Goal (>= 3 pts)</option>
-                <option value="7.0" ${covarState.margin_thresh === 7.0 ? 'selected' : ''}>Win by Touchdown (>= 7 pts)</option>
-                <option value="10.0" ${covarState.margin_thresh === 10.0 ? 'selected' : ''}>Win by Double Digits (>= 10 pts)</option>
-                <option value="14.0" ${covarState.margin_thresh === 14.0 ? 'selected' : ''}>Win by Blowout (>= 14 pts)</option>
-                <option value="17.0" ${covarState.margin_thresh === 17.0 ? 'selected' : ''}>Win by 3+ Scores (>= 17 pts)</option>
-              </select>
-            </div>
-          </div>
-
-        </div>
-
-        <!-- Optional Condition 4 (Toggle Leg) -->
-        <div class="bg-[var(--background)] border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+        <!-- Dynamic Prop Rows Container -->
+        <div class="space-y-3">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="c4-toggle" 
-                ${covarState.c4_active ? 'checked' : ''} 
-                onchange="updateCovar('c4_active', this.checked)" 
-                class="rounded border-[var(--border)] text-[var(--primary)] focus:ring-0 cursor-pointer" 
-              />
-              <label for="c4-toggle" class="text-xs font-bold text-[var(--foreground)] cursor-pointer select-none">
-                Add 4th Leg: Optional Secondary Player Prop
-              </label>
+            <span class="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
+              Active Legs (${comboLegs.length})
+            </span>
+            <div class="flex items-center gap-1.5">
+              <button onclick="addComboLeg('player')" class="px-2.5 py-1 text-xs font-semibold rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+                + Add Player Prop
+              </button>
+              <button onclick="addComboLeg('gameline')" class="px-2.5 py-1 text-xs font-semibold rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+                + Add Game Line
+              </button>
+              <button onclick="addComboLeg('gametotal')" class="px-2.5 py-1 text-xs font-semibold rounded bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-colors">
+                + Add Over/Under
+              </button>
             </div>
-            ${covarState.c4_active ? `<span class="text-xs font-bold text-emerald-500">${(p4 * 100).toFixed(1)}% prob</span>` : `<span class="text-xs text-[var(--muted-foreground)]">Inactive (3-leg evaluation)</span>`}
           </div>
 
-          ${covarState.c4_active ? `
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-[var(--border)]">
-              <div>
-                <label class="text-[11px] text-[var(--muted-foreground)] block">Team:</label>
-                <select onchange="updateCovar('c4_side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-                  <option value="home" ${covarState.c4_side === 'home' ? 'selected' : ''}>${g.home_name}</option>
-                  <option value="away" ${covarState.c4_side === 'away' ? 'selected' : ''}>${g.away_name}</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[11px] text-[var(--muted-foreground)] block">Player Prop (${c4Player}):</label>
-                <select onchange="updateCovar('c4_stat', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)]">
-                  <option value="rb_rush_yds" ${covarState.c4_stat === 'rb_rush_yds' ? 'selected' : ''}>RB Rushing Yards</option>
-                  <option value="rb_tot_yds" ${covarState.c4_stat === 'rb_tot_yds' ? 'selected' : ''}>RB Total Yards</option>
-                  <option value="rb_rush_tds" ${covarState.c4_stat === 'rb_rush_tds' ? 'selected' : ''}>RB Rushing TDs</option>
-                  <option value="wr_rec_yds" ${covarState.c4_stat === 'wr_rec_yds' ? 'selected' : ''}>WR Receiving Yards</option>
-                  <option value="wr_rec" ${covarState.c4_stat === 'wr_rec' ? 'selected' : ''}>WR Receptions</option>
-                  <option value="wr_rec_tds" ${covarState.c4_stat === 'wr_rec_tds' ? 'selected' : ''}>WR Receiving TDs</option>
-                </select>
-              </div>
-              <div>
-                <label class="text-[11px] text-[var(--muted-foreground)] block">Threshold (>=):</label>
-                <input 
-                  type="number" 
-                  step="${covarState.c4_stat.includes('tds') || covarState.c4_stat.includes('rec') ? '1' : '10'}" 
-                  value="${covarState.c4_thresh}" 
-                  onchange="updateCovar('c4_thresh', parseFloat(this.value))" 
-                  class="w-full text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
-                />
-              </div>
+          ${comboLegs.length === 0 ? `
+            <div class="p-6 text-center rounded-xl bg-[var(--background)] border border-[var(--border)] text-xs text-[var(--muted-foreground)]">
+              No prop legs currently added. Click one of the buttons above or select a preset to begin.
             </div>
-          ` : ''}
+          ` : comboLegs.map((leg, idx) => {
+            const r = legResults[idx] || { count: 0, prob: 0 };
+            const sideData = leg.side === 'home' ? s.home : s.away;
+            const spreadText = g.spread_line > 0 ? (leg.side === 'home' ? `-${g.spread_line.toFixed(1)}` : `+${g.spread_line.toFixed(1)}`) : (leg.side === 'home' ? `+${Math.abs(g.spread_line).toFixed(1)}` : `-${Math.abs(g.spread_line).toFixed(1)}`);
+
+            return `
+              <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 space-y-3">
+                <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5">
+                  <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded text-xs font-mono font-bold bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                      Leg #${idx + 1}
+                    </span>
+                    <select onchange="updateComboLeg(${leg.id}, 'category', this.value)" class="text-xs font-semibold p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                      <option value="player" ${leg.category === 'player' ? 'selected' : ''}>Player Prop</option>
+                      <option value="gameline" ${leg.category === 'gameline' ? 'selected' : ''}>Game Line (Moneyline/Spread/Margin)</option>
+                      <option value="gametotal" ${leg.category === 'gametotal' ? 'selected' : ''}>Game Total (Over/Under)</option>
+                    </select>
+                  </div>
+
+                  <div class="flex items-center gap-3">
+                    <div class="text-right">
+                      <span class="text-xs font-bold text-emerald-500">${(r.prob * 100).toFixed(1)}% prob</span>
+                      <span class="text-[11px] font-mono text-[var(--muted-foreground)] ml-1">(${probToAmericanOdds(r.prob)})</span>
+                    </div>
+                    <button onclick="removeComboLeg(${leg.id})" class="px-2 py-1 text-xs font-medium rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 transition-colors">
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Category Specific Form Controls -->
+                ${leg.category === 'player' ? `
+                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Team:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                        <option value="home" ${leg.side === 'home' ? 'selected' : ''}>${g.home_name} (${g.home_team})</option>
+                        <option value="away" ${leg.side === 'away' ? 'selected' : ''}>${g.away_name} (${g.away_team})</option>
+                      </select>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Player & Stat:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'stat', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                        <optgroup label="${sideData ? sideData.qb_name : 'QB'} (Quarterback)">
+                          <option value="qb_pass_yds" ${leg.stat === 'qb_pass_yds' ? 'selected' : ''}>Passing Yards</option>
+                          <option value="qb_pass_tds" ${leg.stat === 'qb_pass_tds' ? 'selected' : ''}>Passing TDs</option>
+                          <option value="qb_rush_yds" ${leg.stat === 'qb_rush_yds' ? 'selected' : ''}>QB Rush Yards</option>
+                        </optgroup>
+                        <optgroup label="${sideData ? sideData.rb_name : 'RB'} (Running Back)">
+                          <option value="rb_rush_yds" ${leg.stat === 'rb_rush_yds' ? 'selected' : ''}>Rushing Yards</option>
+                          <option value="rb_tot_yds" ${leg.stat === 'rb_tot_yds' ? 'selected' : ''}>Total Yards (Rush+Rec)</option>
+                          <option value="rb_rush_tds" ${leg.stat === 'rb_rush_tds' ? 'selected' : ''}>Rushing TDs</option>
+                          <option value="rb_rec" ${leg.stat === 'rb_rec' ? 'selected' : ''}>Receptions</option>
+                        </optgroup>
+                        <optgroup label="${sideData ? sideData.wr_name : 'WR'} (Wide Receiver)">
+                          <option value="wr_rec_yds" ${leg.stat === 'wr_rec_yds' ? 'selected' : ''}>Receiving Yards</option>
+                          <option value="wr_rec_tds" ${leg.stat === 'wr_rec_tds' ? 'selected' : ''}>Receiving TDs</option>
+                          <option value="wr_rec" ${leg.stat === 'wr_rec' ? 'selected' : ''}>Receptions</option>
+                        </optgroup>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Condition & Value:</label>
+                      <div class="flex items-center gap-1.5">
+                        <select onchange="updateComboLeg(${leg.id}, 'op', this.value)" class="w-20 text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold">
+                          <option value=">=" ${leg.op === '>=' ? 'selected' : ''}>>=</option>
+                          <option value="<=" ${leg.op === '<=' ? 'selected' : ''}><=</option>
+                        </select>
+                        <input 
+                          type="number" 
+                          step="${leg.stat && (leg.stat.includes('tds') || leg.stat.includes('rec')) ? '1' : '5'}" 
+                          value="${leg.val}" 
+                          onchange="updateComboLeg(${leg.id}, 'val', parseFloat(this.value))" 
+                          class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ` : (leg.category === 'gameline' ? `
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Team:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                        <option value="home" ${leg.side === 'home' ? 'selected' : ''}>${g.home_name} (${g.home_team})</option>
+                        <option value="away" ${leg.side === 'away' ? 'selected' : ''}>${g.away_name} (${g.away_team})</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Market Line Type:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'type', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                        <option value="win" ${leg.type === 'win' ? 'selected' : ''}>Win Outright (Moneyline)</option>
+                        <option value="spread" ${leg.type === 'spread' ? 'selected' : ''}>Cover Spread (${spreadText})</option>
+                        <option value="margin" ${leg.type === 'margin' ? 'selected' : ''}>Winning Margin Threshold</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Line Specification:</label>
+                      ${leg.type === 'margin' ? `
+                        <select onchange="updateComboLeg(${leg.id}, 'val', parseFloat(this.value))" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono">
+                          <option value="1.0" ${leg.val === 1.0 ? 'selected' : ''}>Win by >= 1 pt (Outright)</option>
+                          <option value="3.0" ${leg.val === 3.0 ? 'selected' : ''}>Win by >= 3 pts (Field Goal)</option>
+                          <option value="7.0" ${leg.val === 7.0 ? 'selected' : ''}>Win by >= 7 pts (Touchdown)</option>
+                          <option value="10.0" ${leg.val === 10.0 ? 'selected' : ''}>Win by >= 10 pts (Double Digits)</option>
+                          <option value="14.0" ${leg.val === 14.0 ? 'selected' : ''}>Win by >= 14 pts (Two TDs)</option>
+                          <option value="17.0" ${leg.val === 17.0 ? 'selected' : ''}>Win by >= 17 pts (3+ Scores)</option>
+                        </select>
+                      ` : (leg.type === 'spread' ? `
+                        <div class="text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--muted-foreground)] font-mono">
+                          Target Spread: ${spreadText}
+                        </div>
+                      ` : `
+                        <div class="text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--muted-foreground)] font-mono">
+                          Target: Win Outright (Score Advantage >= 1 pt)
+                        </div>
+                      `)}
+                    </div>
+                  </div>
+                ` : `
+                  <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Total Direction:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'op', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold">
+                        <option value="over" ${leg.op === 'over' ? 'selected' : ''}>OVER (>= points)</option>
+                        <option value="under" ${leg.op === 'under' ? 'selected' : ''}>UNDER (<= points)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Point Total Threshold:</label>
+                      <input 
+                        type="number" 
+                        step="0.5" 
+                        value="${leg.val}" 
+                        onchange="updateComboLeg(${leg.id}, 'val', parseFloat(this.value))" 
+                        class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
+                      />
+                    </div>
+
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Quick Select:</label>
+                      <div class="flex gap-1">
+                        <button onclick="updateComboLeg(${leg.id}, 'val', ${g.total_line})" class="flex-1 py-1 text-[10px] font-mono rounded bg-[var(--background)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--foreground)] transition-colors">
+                          Line (${g.total_line})
+                        </button>
+                        <button onclick="updateComboLeg(${leg.id}, 'val', 41.5)" class="flex-1 py-1 text-[10px] font-mono rounded bg-[var(--background)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--foreground)] transition-colors">
+                          41.5
+                        </button>
+                        <button onclick="updateComboLeg(${leg.id}, 'val', 45.5)" class="flex-1 py-1 text-[10px] font-mono rounded bg-[var(--background)] hover:bg-[var(--border)] border border-[var(--border)] text-[var(--foreground)] transition-colors">
+                          45.5
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                `)}
+              </div>
+            `;
+          }).join('')}
         </div>
 
         <!-- Joint Results Card -->
         <div class="bg-[var(--card)] border-2 border-[var(--primary)] rounded-2xl p-5 shadow-lg space-y-4">
           <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <span class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] block">Simulated Joint Co-Occurrence</span>
+              <span class="text-xs font-semibold uppercase tracking-wider text-[var(--muted-foreground)] block">
+                Simulated Joint Co-Occurrence Across All Legs
+              </span>
               <div class="flex items-baseline gap-2.5 mt-1">
                 <span class="text-4xl font-black text-[var(--foreground)]">${(p_joint * 100).toFixed(1)}%</span>
-                <span class="text-xs text-[var(--muted-foreground)]">Occurred in <strong>${joint_count}</strong> of <strong>${N}</strong> simulated game scripts</span>
+                <span class="text-xs text-[var(--muted-foreground)]">
+                  Occurred in <strong>${joint_count.toLocaleString()}</strong> of <strong>${N.toLocaleString()}</strong> simulated game scripts
+                </span>
               </div>
             </div>
             
             <div class="sm:text-right">
               ${synergyBadge}
               <div class="text-xs text-[var(--muted-foreground)] mt-1.5">
-                Correlation Ratio: <strong>${multiplier.toFixed(2)}x</strong> vs. independent odds
+                Fair Odds: <strong>${probToAmericanOdds(p_joint)}</strong> | Multiplier: <strong>${multiplier.toFixed(2)}x</strong> vs independent
               </div>
             </div>
           </div>
@@ -728,50 +949,38 @@
             <table class="w-full text-xs text-left">
               <thead class="bg-[var(--background)] text-[var(--muted-foreground)] border-b border-[var(--border)]">
                 <tr>
-                  <th class="p-2.5 font-medium">Evaluation Component</th>
+                  <th class="p-2.5 font-medium">Configured Leg</th>
                   <th class="p-2.5 text-center font-medium">Individual Prob</th>
-                  <th class="p-2.5 text-center font-medium">Calculation Rule</th>
-                  <th class="p-2.5 text-right font-medium">Outcome</th>
+                  <th class="p-2.5 text-center font-medium">Fair Odds</th>
+                  <th class="p-2.5 text-right font-medium">Simulated Hits</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-[var(--border)]">
-                <tr>
-                  <td class="p-2.5 font-medium text-[var(--foreground)]">Condition 1: ${c1Player} ${c1StatName} >= ${covarState.c1_thresh}</td>
-                  <td class="p-2.5 text-center font-mono">${(p1 * 100).toFixed(1)}%</td>
-                  <td class="p-2.5 text-center text-[var(--muted-foreground)]">P(A)</td>
-                  <td class="p-2.5 text-right text-[var(--foreground)]">${Math.round(p1 * N)} / ${N} games</td>
-                </tr>
-                <tr>
-                  <td class="p-2.5 font-medium text-[var(--foreground)]">Condition 2: Game Total ${covarState.total_type.toUpperCase()} ${covarState.total_thresh} pts</td>
-                  <td class="p-2.5 text-center font-mono">${(p2 * 100).toFixed(1)}%</td>
-                  <td class="p-2.5 text-center text-[var(--muted-foreground)]">P(B)</td>
-                  <td class="p-2.5 text-right text-[var(--foreground)]">${Math.round(p2 * N)} / ${N} games</td>
-                </tr>
-                <tr>
-                  <td class="p-2.5 font-medium text-[var(--foreground)]">Condition 3: ${covarState.margin_side === 'home' ? g.home_name : g.away_name} Win Margin >= ${covarState.margin_thresh} pts</td>
-                  <td class="p-2.5 text-center font-mono">${(p3 * 100).toFixed(1)}%</td>
-                  <td class="p-2.5 text-center text-[var(--muted-foreground)]">P(C)</td>
-                  <td class="p-2.5 text-right text-[var(--foreground)]">${Math.round(p3 * N)} / ${N} games</td>
-                </tr>
-                ${covarState.c4_active ? `
+                ${legResults.map((r, idx) => `
                   <tr>
-                    <td class="p-2.5 font-medium text-[var(--foreground)]">Condition 4: ${c4Player} ${c4StatName} >= ${covarState.c4_thresh}</td>
-                    <td class="p-2.5 text-center font-mono">${(p4 * 100).toFixed(1)}%</td>
-                    <td class="p-2.5 text-center text-[var(--muted-foreground)]">P(D)</td>
-                    <td class="p-2.5 text-right text-[var(--foreground)]">${Math.round(p4 * N)} / ${N} games</td>
+                    <td class="p-2.5 font-medium text-[var(--foreground)]">
+                      Leg #${idx + 1}: ${r.summary}
+                    </td>
+                    <td class="p-2.5 text-center font-mono font-bold">${(r.prob * 100).toFixed(1)}%</td>
+                    <td class="p-2.5 text-center font-mono text-[var(--muted-foreground)]">${probToAmericanOdds(r.prob)}</td>
+                    <td class="p-2.5 text-right text-[var(--foreground)]">${r.count.toLocaleString()} / ${N.toLocaleString()} games</td>
                   </tr>
-                ` : ''}
+                `).join('')}
                 <tr class="bg-[var(--background)]/50">
-                  <td class="p-2.5 font-semibold text-[var(--muted-foreground)]">Naive Independent Product (Zero Correlation Assumption)</td>
+                  <td class="p-2.5 font-semibold text-[var(--muted-foreground)]">
+                    Naive Independent Product (Assuming Zero Correlation)
+                  </td>
                   <td class="p-2.5 text-center font-mono font-bold text-[var(--muted-foreground)]">${(p_indep * 100).toFixed(2)}%</td>
-                  <td class="p-2.5 text-center text-[var(--muted-foreground)]">${covarState.c4_active ? 'P(A)×P(B)×P(C)×P(D)' : 'P(A)×P(B)×P(C)'}</td>
+                  <td class="p-2.5 text-center font-mono text-[var(--muted-foreground)]">${probToAmericanOdds(p_indep)}</td>
                   <td class="p-2.5 text-right text-[var(--muted-foreground)]">${(p_indep * N).toFixed(1)} expected games</td>
                 </tr>
                 <tr class="bg-emerald-500/10 font-bold">
-                  <td class="p-2.5 text-[var(--foreground)]">Actual Joint Monte Carlo Simulation (True Emergent Game Script)</td>
+                  <td class="p-2.5 text-[var(--foreground)]">
+                    Actual Joint Monte Carlo Simulation (True Emergent Script)
+                  </td>
                   <td class="p-2.5 text-center font-mono text-emerald-400 font-extrabold text-sm">${(p_joint * 100).toFixed(1)}%</td>
-                  <td class="p-2.5 text-center text-emerald-400 font-mono">${covarState.c4_active ? 'P(A ∩ B ∩ C ∩ D)' : 'P(A ∩ B ∩ C)'}</td>
-                  <td class="p-2.5 text-right text-emerald-400 font-extrabold">${joint_count} actual games (${multiplier.toFixed(2)}x)</td>
+                  <td class="p-2.5 text-center font-mono text-emerald-400 font-extrabold text-sm">${probToAmericanOdds(p_joint)}</td>
+                  <td class="p-2.5 text-right text-emerald-400 font-extrabold">${joint_count.toLocaleString()} actual games (${multiplier.toFixed(2)}x)</td>
                 </tr>
               </tbody>
             </table>
@@ -779,62 +988,425 @@
 
           <!-- Analytical Insights Box -->
           <div class="p-3 bg-[var(--background)] rounded-xl border border-[var(--border)] text-xs text-[var(--muted-foreground)] leading-relaxed space-y-1">
-            <strong class="text-[var(--foreground)] block">Why Covariance Matters in Same-Game Props:</strong>
+            <strong class="text-[var(--foreground)] block">Analytical Covariance Assessment:</strong>
             ${multiplier >= 1.25 ? 
-              `This combination exhibits strong positive synergy (<strong>${multiplier.toFixed(2)}x</strong>). When ${c1Player} hits this milestone, the offense operates with high efficiency, which naturally elevates total points and fuels multi-score victories.` : 
+              `This combination exhibits strong positive synergy (<strong>${multiplier.toFixed(2)}x</strong> multiplier). In simulated game scripts where these events transpire, the conditions reinforce each other (e.g. explosive drive efficiency driving both yardage milestones and scoring margin).` : 
               (multiplier <= 0.8 ? 
-              `This combination suffers from negative game-script drag (<strong>${multiplier.toFixed(2)}x</strong>). Once a team achieves a commanding lead, play-calling naturally pivots toward running the clock out, cannibalizing pass volume late.` : 
-              `This combination behaves near-independently (<strong>${multiplier.toFixed(2)}x</strong>), meaning the outcomes neither strongly assist nor obstruct each other in simulated game scripts.`
+              `This combination suffers from negative game-script drag (<strong>${multiplier.toFixed(2)}x</strong> multiplier). Achieving one milestone naturally disfavors or cannibalizes the others (e.g. large fourth-quarter leads pivoting strategy to conservative clock-draining runs rather than passing volume).` : 
+              `This combination behaves near-independently (<strong>${multiplier.toFixed(2)}x</strong> multiplier), indicating minimal mechanical correlation between these specific thresholds across 10,000 simulations.`
             )}
           </div>
         </div>
       `;
     }
 
-    function updateCovar(key, val) {
-      covarState[key] = val;
-      renderCovarianceView();
+    // ==========================================
+    // VIEW 2: GAME LINES ENGINE (MACRO LINES & TOTALS)
+    // ==========================================
+    function setGameLinesTotal(val) {
+      gameLinesTotal = Number(val);
+      renderGameLinesView();
     }
 
-    function setExamplePreset(preset) {
-      if (preset === 'user_250') {
-        covarState.c1_side = 'home';
-        covarState.c1_stat = 'qb_pass_yds';
-        covarState.c1_thresh = 250;
-        covarState.total_type = 'over';
-        covarState.total_thresh = 42.0;
-        covarState.margin_side = 'home';
-        covarState.margin_thresh = 10.0;
-        covarState.c4_active = false;
-      } else if (preset === 'user_200') {
-        covarState.c1_side = 'home';
-        covarState.c1_stat = 'qb_pass_yds';
-        covarState.c1_thresh = 200;
-        covarState.total_type = 'over';
-        covarState.total_thresh = 42.0;
-        covarState.margin_side = 'home';
-        covarState.margin_thresh = 10.0;
-        covarState.c4_active = false;
-      } else if (preset === 'shootout') {
-        covarState.c1_side = 'home';
-        covarState.c1_stat = 'qb_pass_tds';
-        covarState.c1_thresh = 2;
-        covarState.total_type = 'over';
-        covarState.total_thresh = 45.0;
-        covarState.margin_side = 'home';
-        covarState.margin_thresh = 3.0;
-        covarState.c4_active = false;
-      } else if (preset === 'ground_pound') {
-        covarState.c1_side = 'home';
-        covarState.c1_stat = 'rb_rush_yds';
-        covarState.c1_thresh = 70;
-        covarState.total_type = 'under';
-        covarState.total_thresh = 42.0;
-        covarState.margin_side = 'home';
-        covarState.margin_thresh = 7.0;
-        covarState.c4_active = false;
+    function updateCustomGameLine(field, val) {
+      if (field === 'margin_side') customMarginSide = val;
+      if (field === 'margin_type') customMarginType = val;
+      if (field === 'margin_val') customMarginVal = Number(val);
+      if (field === 'total_op') customTotalOp = val;
+      if (field === 'total_val') customTotalVal = Number(val);
+      renderGameLinesView();
+    }
+
+    function renderGameLinesView() {
+      const g = GAMES_DATA.find(x => x.game_id === activeModalGid);
+      if (!g || !g.sim_samples) return;
+
+      const container = document.getElementById('modal-gamelines-view');
+      const s = g.sim_samples;
+      const N = s.n_sims || s.margin.length;
+
+      const currentTotal = gameLinesTotal !== null ? gameLinesTotal : (g.total_line || 43.5);
+      const currentSpread = g.spread_line || 0;
+      const spreadAbs = Math.abs(currentSpread);
+
+      // Arrays
+      const marginArr = s.margin; // positive = home win
+      const totalArr = s.total;
+
+      // Base Rates
+      const homeWinCount = marginArr.filter(m => m >= 1).length;
+      const awayWinCount = marginArr.filter(m => m <= -1).length;
+      const p_home_win = homeWinCount / N;
+      const p_away_win = awayWinCount / N;
+
+      const homeCoverCount = marginArr.filter(m => m > currentSpread).length;
+      const awayCoverCount = marginArr.filter(m => m < currentSpread).length;
+      const p_home_cover = homeCoverCount / N;
+      const p_away_cover = awayCoverCount / N;
+
+      const overCount = totalArr.filter(t => t >= currentTotal).length;
+      const underCount = totalArr.filter(t => t <= currentTotal).length;
+      const p_over = overCount / N;
+      const p_under = underCount / N;
+
+      // 1. Winner & Over/Under 2x2 Quadrants
+      let hw_over = 0, hw_under = 0, aw_over = 0, aw_under = 0;
+      for (let i = 0; i < N; i++) {
+        const isHW = marginArr[i] >= 1;
+        const isAW = marginArr[i] <= -1;
+        const isO = totalArr[i] >= currentTotal;
+        const isU = totalArr[i] <= currentTotal;
+
+        if (isHW && isO) hw_over++;
+        if (isHW && isU) hw_under++;
+        if (isAW && isO) aw_over++;
+        if (isAW && isU) aw_under++;
       }
-      renderCovarianceView();
+
+      // 2. Spread Cover & Over/Under 2x2 Quadrants
+      let hc_over = 0, hc_under = 0, ac_over = 0, ac_under = 0;
+      for (let i = 0; i < N; i++) {
+        const isHC = marginArr[i] > currentSpread;
+        const isAC = marginArr[i] < currentSpread;
+        const isO = totalArr[i] >= currentTotal;
+        const isU = totalArr[i] <= currentTotal;
+
+        if (isHC && isO) hc_over++;
+        if (isHC && isU) hc_under++;
+        if (isAC && isO) ac_over++;
+        if (isAC && isU) ac_under++;
+      }
+
+      // 3. Pearson Correlation r(margin, total)
+      let sumM = 0, sumT = 0;
+      for (let i = 0; i < N; i++) {
+        sumM += marginArr[i];
+        sumT += totalArr[i];
+      }
+      const meanM = sumM / N;
+      const meanT = sumT / N;
+
+      let covMT = 0, varM = 0, varT = 0;
+      let sumT_in_hw = 0, n_in_hw = 0;
+      let sumT_in_aw = 0, n_in_aw = 0;
+      let sumAbsM_in_over = 0, n_in_over = 0;
+      let sumAbsM_in_under = 0, n_in_under = 0;
+
+      for (let i = 0; i < N; i++) {
+        const dm = marginArr[i] - meanM;
+        const dt = totalArr[i] - meanT;
+        covMT += dm * dt;
+        varM += dm * dm;
+        varT += dt * dt;
+
+        if (marginArr[i] >= 1) {
+          sumT_in_hw += totalArr[i];
+          n_in_hw++;
+        } else if (marginArr[i] <= -1) {
+          sumT_in_aw += totalArr[i];
+          n_in_aw++;
+        }
+
+        if (totalArr[i] >= currentTotal) {
+          sumAbsM_in_over += Math.abs(marginArr[i]);
+          n_in_over++;
+        } else {
+          sumAbsM_in_under += Math.abs(marginArr[i]);
+          n_in_under++;
+        }
+      }
+
+      const stdM = Math.sqrt(varM / N);
+      const stdT = Math.sqrt(varT / N);
+      const r_corr = (stdM > 0 && stdT > 0) ? (covMT / (N * stdM * stdT)) : 0;
+
+      const avgT_hw = n_in_hw > 0 ? (sumT_in_hw / n_in_hw) : 0;
+      const avgT_aw = n_in_aw > 0 ? (sumT_in_aw / n_in_aw) : 0;
+      const avgAbsM_over = n_in_over > 0 ? (sumAbsM_in_over / n_in_over) : 0;
+      const avgAbsM_under = n_in_under > 0 ? (sumAbsM_in_under / n_in_under) : 0;
+
+      // 4. Custom Line Evaluator Calculation
+      if (customTotalVal === null) customTotalVal = currentTotal;
+      const customMatchesMargin = marginArr.map(m => {
+        if (customMarginType === 'win') {
+          return customMarginSide === 'home' ? m >= 1 : -m >= 1;
+        } else if (customMarginType === 'spread') {
+          return customMarginSide === 'home' ? m > currentSpread : m < currentSpread;
+        } else {
+          return customMarginSide === 'home' ? m >= customMarginVal : -m >= customMarginVal;
+        }
+      });
+      const customMatchesTotal = totalArr.map(t => {
+        return customTotalOp === 'over' ? t >= customTotalVal : t <= customTotalVal;
+      });
+
+      let customJointHits = 0;
+      for (let i = 0; i < N; i++) {
+        if (customMatchesMargin[i] && customMatchesTotal[i]) customJointHits++;
+      }
+      const p_c_margin = customMatchesMargin.filter(Boolean).length / N;
+      const p_c_total = customMatchesTotal.filter(Boolean).length / N;
+      const p_c_joint = customJointHits / N;
+      const p_c_indep = p_c_margin * p_c_total;
+      const c_multiplier = p_c_indep > 0 ? (p_c_joint / p_c_indep) : 1.0;
+
+      // Helper function to build a 2x2 matrix cell
+      function renderMatrixCell(title, hits, p_emp, p_ind, colorClass) {
+        const mult = p_ind > 0 ? (p_emp / p_ind) : 1.0;
+        const diffPct = Math.round((mult - 1) * 100);
+        let badge = '';
+        if (diffPct > 3) {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+${diffPct}% synergy</span>`;
+        } else if (diffPct < -3) {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-amber-500/10 text-amber-400 border border-amber-500/20">${diffPct}% drag</span>`;
+        } else {
+          badge = `<span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-500/10 text-slate-300 border border-slate-500/20">Independent</span>`;
+        }
+
+        return `
+          <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-3.5 flex flex-col justify-between space-y-2.5">
+            <div class="flex items-start justify-between gap-1.5">
+              <span class="text-xs font-bold text-[var(--foreground)]">${title}</span>
+              ${badge}
+            </div>
+
+            <div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-2xl font-black ${colorClass}">${(p_emp * 100).toFixed(1)}%</span>
+                <span class="text-xs font-mono font-bold text-[var(--foreground)]">${probToAmericanOdds(p_emp)}</span>
+              </div>
+              <div class="text-[11px] text-[var(--muted-foreground)] mt-0.5">
+                ${hits.toLocaleString()} / ${N.toLocaleString()} games | Indep: ${(p_ind * 100).toFixed(1)}%
+              </div>
+            </div>
+
+            <div class="h-1.5 w-full bg-[var(--background)] rounded-full overflow-hidden border border-[var(--border)]">
+              <div class="h-full bg-emerald-500" style="width: ${p_emp * 100}%"></div>
+            </div>
+          </div>
+        `;
+      }
+
+      container.innerHTML = `
+        <!-- Header & Baseline Total Selector -->
+        <div class="bg-[var(--background)] p-4 rounded-xl border border-[var(--border)] space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold text-[var(--foreground)]">Game Lines Covariance: Moneyline, Spread & Total Interaction</span>
+                <span class="px-2 py-0.5 rounded text-[11px] font-mono font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">${N.toLocaleString()} Simulations</span>
+              </div>
+              <p class="text-xs text-[var(--muted-foreground)] mt-1">
+                Evaluates empirical co-occurrence rates between game winners, spread covers, and total points scored across ${N.toLocaleString()} simulated game scripts.
+              </p>
+            </div>
+          </div>
+
+          <!-- Total Threshold Switcher -->
+          <div class="pt-2.5 border-t border-[var(--border)] flex flex-wrap items-center gap-2">
+            <span class="text-xs font-semibold text-[var(--muted-foreground)]">Evaluating Total At:</span>
+            <div class="flex items-center gap-1.5">
+              <input 
+                type="number" 
+                step="0.5" 
+                value="${currentTotal}" 
+                onchange="setGameLinesTotal(this.value)" 
+                class="w-20 text-xs p-1.5 rounded bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
+              />
+              <span class="text-xs text-[var(--muted-foreground)]">pts</span>
+            </div>
+            <div class="flex gap-1 ml-auto">
+              <button onclick="setGameLinesTotal(${g.total_line})" class="px-2.5 py-1 text-xs font-medium rounded ${currentTotal === g.total_line ? 'bg-[var(--primary)] text-[var(--primary-foreground)]' : 'bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)]'} transition-colors">
+                Market Line (${g.total_line})
+              </button>
+              <button onclick="setGameLinesTotal(${g.total_line - 3})" class="px-2.5 py-1 text-xs font-medium rounded ${currentTotal === (g.total_line - 3) ? 'bg-[var(--primary)] text-[var(--primary-foreground)]' : 'bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)]'} transition-colors">
+                ${g.total_line - 3}
+              </button>
+              <button onclick="setGameLinesTotal(${g.total_line + 3})" class="px-2.5 py-1 text-xs font-medium rounded ${currentTotal === (g.total_line + 3) ? 'bg-[var(--primary)] text-[var(--primary-foreground)]' : 'bg-[var(--card)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)]'} transition-colors">
+                ${g.total_line + 3}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 1: Moneyline & Over/Under 2x2 Matrix -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
+              Winner & Over/Under 2x2 Matrix
+            </span>
+            <span class="text-xs text-[var(--muted-foreground)]">
+              Moneyline Win paired with Total Points (Threshold: ${currentTotal} pts)
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            ${renderMatrixCell(`${g.home_name} Win + OVER ${currentTotal}`, hw_over, hw_over / N, p_home_win * p_over, 'text-emerald-400')}
+            ${renderMatrixCell(`${g.home_name} Win + UNDER ${currentTotal}`, hw_under, hw_under / N, p_home_win * p_under, 'text-blue-400')}
+            ${renderMatrixCell(`${g.away_name} Win + OVER ${currentTotal}`, aw_over, aw_over / N, p_away_win * p_over, 'text-purple-400')}
+            ${renderMatrixCell(`${g.away_name} Win + UNDER ${currentTotal}`, aw_under, aw_under / N, p_away_win * p_under, 'text-amber-400')}
+          </div>
+        </div>
+
+        <!-- Section 2: Spread Cover & Over/Under 2x2 Matrix -->
+        <div class="space-y-3">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold uppercase tracking-wider text-[var(--foreground)]">
+              Spread Cover & Over/Under 2x2 Matrix
+            </span>
+            <span class="text-xs text-[var(--muted-foreground)]">
+              Market Spread: ${currentSpread > 0 ? `${g.home_team} -${currentSpread.toFixed(1)}` : (currentSpread < 0 ? `${g.away_team} -${spreadAbs.toFixed(1)}` : 'PK')}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            ${renderMatrixCell(`${g.home_team} Cover + OVER ${currentTotal}`, hc_over, hc_over / N, p_home_cover * p_over, 'text-emerald-400')}
+            ${renderMatrixCell(`${g.home_team} Cover + UNDER ${currentTotal}`, hc_under, hc_under / N, p_home_cover * p_under, 'text-blue-400')}
+            ${renderMatrixCell(`${g.away_team} Cover + OVER ${currentTotal}`, ac_over, ac_over / N, p_away_cover * p_over, 'text-purple-400')}
+            ${renderMatrixCell(`${g.away_team} Cover + UNDER ${currentTotal}`, ac_under, ac_under / N, p_away_cover * p_under, 'text-amber-400')}
+          </div>
+        </div>
+
+        <!-- Section 3: Pearson Correlation & Macro Game-Script Statistics -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-4">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-[var(--foreground)] block">
+                Macro Script Correlation & Scoring Regimes
+              </span>
+              <span class="text-xs text-[var(--muted-foreground)]">
+                Statistical dependency between winning margin and point totals across 10,000 games
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-[var(--muted-foreground)]">Pearson r(Margin, Total):</span>
+              <span class="px-2.5 py-1 rounded text-xs font-mono font-black ${r_corr >= 0.05 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : (r_corr <= -0.05 ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-500/10 text-slate-300 border border-slate-500/20')}">
+                ${r_corr >= 0 ? '+' : ''}${r_corr.toFixed(3)}
+              </span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+            <!-- Left: Average Total by Winner -->
+            <div class="p-3 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-2">
+              <span class="font-bold text-[var(--foreground)] block">Scoring Environment by Winning Team</span>
+              <div class="flex justify-between items-center py-1 border-b border-[var(--border)]">
+                <span class="text-[var(--muted-foreground)]">Average Total Points in ${g.home_team} Wins:</span>
+                <span class="font-mono font-bold text-[var(--foreground)]">${avgT_hw.toFixed(1)} pts</span>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-[var(--muted-foreground)]">Average Total Points in ${g.away_team} Wins:</span>
+                <span class="font-mono font-bold text-[var(--foreground)]">${avgT_aw.toFixed(1)} pts</span>
+              </div>
+              <p class="text-[11px] text-[var(--muted-foreground)] pt-1">
+                ${avgT_hw > avgT_aw + 1.5 ? 
+                  `${g.home_team} offensive efficiency thrives in high-scoring environments (+${(avgT_hw - avgT_aw).toFixed(1)} pts higher total in home victories).` : 
+                  (avgT_aw > avgT_hw + 1.5 ? 
+                  `${g.away_team} victories correlate with higher point totals (+${(avgT_aw - avgT_hw).toFixed(1)} pts higher total in road victories).` : 
+                  `Winning game scripts for both teams exhibit balanced point totals across simulated scripts.`
+                )}
+              </p>
+            </div>
+
+            <!-- Right: Average Margin by Total Outcome -->
+            <div class="p-3 bg-[var(--background)] rounded-lg border border-[var(--border)] space-y-2">
+              <span class="font-bold text-[var(--foreground)] block">Average Victory Margin by Total Outcome</span>
+              <div class="flex justify-between items-center py-1 border-b border-[var(--border)]">
+                <span class="text-[var(--muted-foreground)]">Average Margin in OVER games:</span>
+                <span class="font-mono font-bold text-[var(--foreground)]">${avgAbsM_over.toFixed(1)} pts</span>
+              </div>
+              <div class="flex justify-between items-center py-1">
+                <span class="text-[var(--muted-foreground)]">Average Margin in UNDER games:</span>
+                <span class="font-mono font-bold text-[var(--foreground)]">${avgAbsM_under.toFixed(1)} pts</span>
+              </div>
+              <p class="text-[11px] text-[var(--muted-foreground)] pt-1">
+                ${avgAbsM_over > avgAbsM_under + 1.5 ? 
+                  `High-scoring games exhibit wider separation and blowout potential (+${(avgAbsM_over - avgAbsM_under).toFixed(1)} pts wider margin).` : 
+                  (avgAbsM_under > avgAbsM_over + 1.5 ? 
+                  `Low-scoring games feature wider margins, whereas shootouts remain closer.` : 
+                  `Victory margins remain relatively stable across both over and under game environments.`
+                )}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: Custom Game Line Evaluator -->
+        <div class="bg-[var(--card)] border border-[var(--border)] rounded-xl p-4 space-y-3">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span class="text-xs font-bold uppercase tracking-wider text-[var(--foreground)] block">
+                Custom Game Line & Total Evaluator
+              </span>
+              <span class="text-xs text-[var(--muted-foreground)]">
+                Evaluate any custom game line paired with any point total threshold
+              </span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-mono font-bold text-emerald-500">${(p_c_joint * 100).toFixed(1)}% prob</span>
+              <span class="text-xs font-mono text-[var(--muted-foreground)]">(${probToAmericanOdds(p_c_joint)})</span>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-slate-500/10 text-slate-300 border border-slate-500/20">
+                ${c_multiplier.toFixed(2)}x vs indep
+              </span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5 pt-1">
+            <div>
+              <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Team:</label>
+              <select onchange="updateCustomGameLine('margin_side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                <option value="home" ${customMarginSide === 'home' ? 'selected' : ''}>${g.home_name}</option>
+                <option value="away" ${customMarginSide === 'away' ? 'selected' : ''}>${g.away_name}</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Game Line Type:</label>
+              <select onchange="updateCustomGameLine('margin_type', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                <option value="win" ${customMarginType === 'win' ? 'selected' : ''}>Win Outright (Moneyline)</option>
+                <option value="spread" ${customMarginType === 'spread' ? 'selected' : ''}>Cover Spread (${currentSpread > 0 ? (customMarginSide === 'home' ? `-${currentSpread.toFixed(1)}` : `+${currentSpread.toFixed(1)}`) : (customMarginSide === 'home' ? `+${spreadAbs.toFixed(1)}` : `-${spreadAbs.toFixed(1)}`)})</option>
+                <option value="margin" ${customMarginType === 'margin' ? 'selected' : ''}>Win by Margin (>= pts)</option>
+              </select>
+            </div>
+
+            ${customMarginType === 'margin' ? `
+              <div>
+                <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Margin Threshold:</label>
+                <select onchange="updateCustomGameLine('margin_val', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-mono font-bold">
+                  <option value="3.0" ${customMarginVal === 3.0 ? 'selected' : ''}>Field Goal (>= 3 pts)</option>
+                  <option value="7.0" ${customMarginVal === 7.0 ? 'selected' : ''}>Touchdown (>= 7 pts)</option>
+                  <option value="10.0" ${customMarginVal === 10.0 ? 'selected' : ''}>Double Digits (>= 10 pts)</option>
+                  <option value="14.0" ${customMarginVal === 14.0 ? 'selected' : ''}>Blowout (>= 14 pts)</option>
+                </select>
+              </div>
+            ` : `
+              <div>
+                <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Line Condition:</label>
+                <div class="text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--muted-foreground)] font-mono">
+                  ${customMarginType === 'win' ? 'Win Outright (Score >= 1)' : 'Cover Vegas Spread'}
+                </div>
+              </div>
+            `}
+
+            <div>
+              <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Game Total:</label>
+              <div class="flex items-center gap-1.5">
+                <select onchange="updateCustomGameLine('total_op', this.value)" class="w-20 text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold">
+                  <option value="over" ${customTotalOp === 'over' ? 'selected' : ''}>OVER</option>
+                  <option value="under" ${customTotalOp === 'under' ? 'selected' : ''}>UNDER</option>
+                </select>
+                <input 
+                  type="number" 
+                  step="0.5" 
+                  value="${customTotalVal}" 
+                  onchange="updateCustomGameLine('total_val', this.value)" 
+                  class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
     }
 
     // ==========================================
@@ -981,8 +1553,12 @@
         </div>
       `;
 
-      // Render Covariance view by default
-      renderCovarianceView();
+      if (gid !== lastLoadedModalGid) {
+        comboLegs = [];
+        initComboLegs(g);
+        lastLoadedModalGid = gid;
+      }
+      gameLinesTotal = g.total_line;
 
       // Render Team View
       const teamView = document.getElementById('modal-team-view');
@@ -1076,7 +1652,7 @@
         </div>
       `;
 
-      switchModalTab('covar');
+      switchModalTab('combo');
       document.getElementById('game-modal').classList.remove('hidden');
     }
 
