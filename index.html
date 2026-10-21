@@ -510,6 +510,7 @@
           id: nextLegId++,
           category: 'player',
           side: 'home',
+          playerRole: 'qb',
           stat: 'qb_pass_yds',
           op: '>=',
           val: 250
@@ -536,6 +537,7 @@
       const leg = { id: nextLegId++, category };
       if (category === 'player') {
         leg.side = 'home';
+        leg.playerRole = 'qb';
         leg.stat = 'qb_pass_yds';
         leg.op = '>=';
         leg.val = 250;
@@ -565,6 +567,7 @@
         leg.category = val;
         if (val === 'player') {
           leg.side = leg.side || 'home';
+          leg.playerRole = 'qb';
           leg.stat = 'qb_pass_yds';
           leg.op = '>=';
           leg.val = 250;
@@ -575,6 +578,18 @@
         } else if (val === 'gametotal') {
           leg.op = 'over';
           leg.val = (g && g.total_line) ? g.total_line : 43.5;
+        }
+      } else if (field === 'playerRole') {
+        leg.playerRole = val;
+        if (val === 'qb') {
+          leg.stat = 'qb_pass_yds';
+          leg.val = 250;
+        } else if (val === 'rb') {
+          leg.stat = 'rb_rush_yds';
+          leg.val = 65;
+        } else if (val === 'wr') {
+          leg.stat = 'wr_rec_yds';
+          leg.val = 65;
         }
       } else if (field === 'stat') {
         leg.stat = val;
@@ -607,25 +622,25 @@
 
       if (preset === 'user_250') {
         comboLegs = [
-          { id: nextLegId++, category: 'player', side: 'home', stat: 'qb_pass_yds', op: '>=', val: 250 },
+          { id: nextLegId++, category: 'player', side: 'home', playerRole: 'qb', stat: 'qb_pass_yds', op: '>=', val: 250 },
           { id: nextLegId++, category: 'gametotal', op: 'over', val: 42.0 },
           { id: nextLegId++, category: 'gameline', side: 'home', type: 'margin', val: 10.0 }
         ];
       } else if (preset === 'user_200') {
         comboLegs = [
-          { id: nextLegId++, category: 'player', side: 'home', stat: 'qb_pass_yds', op: '>=', val: 200 },
+          { id: nextLegId++, category: 'player', side: 'home', playerRole: 'qb', stat: 'qb_pass_yds', op: '>=', val: 200 },
           { id: nextLegId++, category: 'gametotal', op: 'over', val: 42.0 },
           { id: nextLegId++, category: 'gameline', side: 'home', type: 'margin', val: 10.0 }
         ];
       } else if (preset === 'shootout') {
         comboLegs = [
           { id: nextLegId++, category: 'gametotal', op: 'over', val: totalLine },
-          { id: nextLegId++, category: 'player', side: 'home', stat: 'qb_pass_tds', op: '>=', val: 2 },
-          { id: nextLegId++, category: 'player', side: 'away', stat: 'qb_pass_yds', op: '>=', val: 230 }
+          { id: nextLegId++, category: 'player', side: 'home', playerRole: 'qb', stat: 'qb_pass_tds', op: '>=', val: 2 },
+          { id: nextLegId++, category: 'player', side: 'away', playerRole: 'qb', stat: 'qb_pass_yds', op: '>=', val: 230 }
         ];
       } else if (preset === 'ground_pound') {
         comboLegs = [
-          { id: nextLegId++, category: 'player', side: 'home', stat: 'rb_rush_yds', op: '>=', val: 70 },
+          { id: nextLegId++, category: 'player', side: 'home', playerRole: 'rb', stat: 'rb_rush_yds', op: '>=', val: 70 },
           { id: nextLegId++, category: 'gameline', side: 'home', type: 'win', val: 1.0 },
           { id: nextLegId++, category: 'gametotal', op: 'under', val: totalLine }
         ];
@@ -778,7 +793,8 @@
 
                 <!-- Category Specific Form Controls -->
                 ${leg.category === 'player' ? `
-                  <div class="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+                  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
+                    <!-- Spot 1: Team -->
                     <div>
                       <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Team:</label>
                       <select onchange="updateComboLeg(${leg.id}, 'side', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
@@ -787,43 +803,56 @@
                       </select>
                     </div>
 
-                    <div class="sm:col-span-2">
-                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Player & Stat:</label>
-                      <select onchange="updateComboLeg(${leg.id}, 'stat', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
-                        <optgroup label="${sideData ? sideData.qb_name : 'QB'} (Quarterback)">
-                          <option value="qb_pass_yds" ${leg.stat === 'qb_pass_yds' ? 'selected' : ''}>Passing Yards</option>
-                          <option value="qb_pass_tds" ${leg.stat === 'qb_pass_tds' ? 'selected' : ''}>Passing TDs</option>
-                          <option value="qb_rush_yds" ${leg.stat === 'qb_rush_yds' ? 'selected' : ''}>QB Rush Yards</option>
-                        </optgroup>
-                        <optgroup label="${sideData ? sideData.rb_name : 'RB'} (Running Back)">
-                          <option value="rb_rush_yds" ${leg.stat === 'rb_rush_yds' ? 'selected' : ''}>Rushing Yards</option>
-                          <option value="rb_tot_yds" ${leg.stat === 'rb_tot_yds' ? 'selected' : ''}>Total Yards (Rush+Rec)</option>
-                          <option value="rb_rush_tds" ${leg.stat === 'rb_rush_tds' ? 'selected' : ''}>Rushing TDs</option>
-                          <option value="rb_rec" ${leg.stat === 'rb_rec' ? 'selected' : ''}>Receptions</option>
-                        </optgroup>
-                        <optgroup label="${sideData ? sideData.wr_name : 'WR'} (Wide Receiver)">
-                          <option value="wr_rec_yds" ${leg.stat === 'wr_rec_yds' ? 'selected' : ''}>Receiving Yards</option>
-                          <option value="wr_rec_tds" ${leg.stat === 'wr_rec_tds' ? 'selected' : ''}>Receiving TDs</option>
-                          <option value="wr_rec" ${leg.stat === 'wr_rec' ? 'selected' : ''}>Receptions</option>
-                        </optgroup>
+                    <!-- Spot 2: Player Name -->
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Player Name:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'playerRole', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-semibold">
+                        <option value="qb" ${(leg.playerRole || (leg.stat && leg.stat.startsWith('qb_') ? 'qb' : '')) === 'qb' ? 'selected' : ''}>${sideData ? sideData.qb_name : 'QB'} (QB)</option>
+                        <option value="rb" ${(leg.playerRole || (leg.stat && leg.stat.startsWith('rb_') ? 'rb' : '')) === 'rb' ? 'selected' : ''}>${sideData ? sideData.rb_name : 'RB'} (RB)</option>
+                        <option value="wr" ${(leg.playerRole || (leg.stat && leg.stat.startsWith('wr_') ? 'wr' : '')) === 'wr' ? 'selected' : ''}>${sideData ? sideData.wr_name : 'WR'} (WR)</option>
                       </select>
                     </div>
 
+                    <!-- Spot 3: Stat -->
                     <div>
-                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Condition & Value:</label>
-                      <div class="flex items-center gap-1.5">
-                        <select onchange="updateComboLeg(${leg.id}, 'op', this.value)" class="w-20 text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold">
-                          <option value=">=" ${leg.op === '>=' ? 'selected' : ''}>>=</option>
-                          <option value="<=" ${leg.op === '<=' ? 'selected' : ''}><=</option>
-                        </select>
-                        <input 
-                          type="number" 
-                          step="${leg.stat && (leg.stat.includes('tds') || leg.stat.includes('rec')) ? '1' : '5'}" 
-                          value="${leg.val}" 
-                          onchange="updateComboLeg(${leg.id}, 'val', parseFloat(this.value))" 
-                          class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
-                        />
-                      </div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Stat:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'stat', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)]">
+                        ${(leg.playerRole || (leg.stat && leg.stat.startsWith('qb_') ? 'qb' : (leg.stat && leg.stat.startsWith('rb_') ? 'rb' : 'wr'))) === 'qb' ? `
+                          <option value="qb_pass_yds" ${leg.stat === 'qb_pass_yds' ? 'selected' : ''}>Passing Yards</option>
+                          <option value="qb_pass_tds" ${leg.stat === 'qb_pass_tds' ? 'selected' : ''}>Passing Touchdowns</option>
+                          <option value="qb_rush_yds" ${leg.stat === 'qb_rush_yds' ? 'selected' : ''}>QB Rush Yards</option>
+                        ` : ((leg.playerRole || (leg.stat && leg.stat.startsWith('rb_') ? 'rb' : 'wr')) === 'rb' ? `
+                          <option value="rb_rush_yds" ${leg.stat === 'rb_rush_yds' ? 'selected' : ''}>Rushing Yards</option>
+                          <option value="rb_tot_yds" ${leg.stat === 'rb_tot_yds' ? 'selected' : ''}>Total Yards (Rush + Rec)</option>
+                          <option value="rb_rush_tds" ${leg.stat === 'rb_rush_tds' ? 'selected' : ''}>Rushing Touchdowns</option>
+                          <option value="rb_rec" ${leg.stat === 'rb_rec' ? 'selected' : ''}>Receptions</option>
+                        ` : `
+                          <option value="wr_rec_yds" ${leg.stat === 'wr_rec_yds' ? 'selected' : ''}>Receiving Yards</option>
+                          <option value="wr_rec_tds" ${leg.stat === 'wr_rec_tds' ? 'selected' : ''}>Receiving Touchdowns</option>
+                          <option value="wr_rec" ${leg.stat === 'wr_rec' ? 'selected' : ''}>Receptions</option>
+                        `)}
+                      </select>
+                    </div>
+
+                    <!-- Spot 4: Over / Under -->
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Over / Under:</label>
+                      <select onchange="updateComboLeg(${leg.id}, 'op', this.value)" class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold">
+                        <option value=">=" ${leg.op === '>=' ? 'selected' : ''}>Over (>=)</option>
+                        <option value="<=" ${leg.op === '<=' ? 'selected' : ''}>Under (<=)</option>
+                      </select>
+                    </div>
+
+                    <!-- Spot 5: Value -->
+                    <div>
+                      <label class="text-[11px] text-[var(--muted-foreground)] block mb-1">Value:</label>
+                      <input 
+                        type="number" 
+                        step="${leg.stat && (leg.stat.includes('tds') || leg.stat.includes('rec')) ? '1' : '5'}" 
+                        value="${leg.val}" 
+                        onchange="updateComboLeg(${leg.id}, 'val', parseFloat(this.value))" 
+                        class="w-full text-xs p-1.5 rounded bg-[var(--background)] border border-[var(--border)] text-[var(--foreground)] font-bold font-mono" 
+                      />
                     </div>
                   </div>
                 ` : (leg.category === 'gameline' ? `
