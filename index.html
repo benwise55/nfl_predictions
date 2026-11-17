@@ -3,17 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>NFL 2026 Week 10 Predictions, Player Deciles & Covariance</title>
+  <title>Week 10 Predictions</title>
   <!-- Tailwind CSS CDN for global static web hosting -->
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     :root {
-      --background: #090d16;
-      --card: #111827;
-      --border: #1f2937;
-      --foreground: #f3f4f6;
-      --muted-foreground: #9ca3af;
-      --primary: #2563eb;
+      --background: #0b0f19;
+      --card: #121826;
+      --border: #1e293b;
+      --foreground: #f8fafc;
+      --muted-foreground: #94a3b8;
+      --primary: #3b82f6;
       --primary-foreground: #ffffff;
       --accent: #10b981;
     }
@@ -21,8 +21,8 @@
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--muted-foreground); }
-    .badge-ats { background: rgba(16, 185, 129, 0.15); color: #10b981; border: 1px solid rgba(16, 185, 129, 0.3); }
-    .badge-ou { background: rgba(59, 130, 246, 0.15); color: #3b82f6; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-ats { background: rgba(16, 185, 129, 0.12); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.25); }
+    .badge-ou { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
   </style>
 </head>
 <body class="bg-[var(--background)] text-[var(--foreground)] antialiased min-h-screen p-4 sm:p-6 lg:p-8">
@@ -31,96 +31,60 @@
   <div class="max-w-7xl mx-auto space-y-6">
 
     <!-- Top Header -->
-    <header class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-6 shadow-sm">
-      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <header class="pt-2 pb-1">
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 border-b border-[var(--border)] pb-4">
         <div>
-          <div class="flex items-center gap-3">
-            <span class="px-2.5 py-1 text-xs font-semibold tracking-wider uppercase rounded-md bg-[var(--primary)] text-[var(--primary-foreground)]">
-              NFL Model 2026
-            </span>
-            <span class="px-2 py-0.5 text-xs font-medium rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Updated 2026-11-15 12:57:24
-            </span>
-            <span class="text-xs text-[var(--muted-foreground)] hidden sm:inline">Depth Splits • Game Volatility • Man/Zone Leverage</span>
-          </div>
-          <h1 class="text-2xl sm:text-3xl font-extrabold tracking-tight mt-2 text-[var(--foreground)]">
-            Week 10 Game Predictions & Covariance Analyzer
+          <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--foreground)]">
+            Week 10 Predictions
           </h1>
-          <p class="text-sm text-[var(--muted-foreground)] mt-1">
-            Simulated with depth-of-target passer splits, receiver game volatility (&sigma;), and man/zone coverage leverage. Click any game card to inspect <strong>Player Stat Deciles</strong> and test <strong>Joint Covariates</strong>.
+          <p class="text-xs sm:text-sm text-[var(--muted-foreground)] mt-1 font-medium">
+            NFL 2026 · 1,000 simulations per game
           </p>
-        </div>
-
-        <!-- Quick Summary Stats -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-[var(--background)] p-3 rounded-xl border border-[var(--border)]">
-          <div class="text-center px-2">
-            <span class="text-xs text-[var(--muted-foreground)] block">Total Simulations</span>
-            <span class="text-lg font-bold text-[var(--foreground)]">14,000</span>
-            <span class="text-[10px] text-[var(--muted-foreground)] block">1,000 / game</span>
-          </div>
-          <div class="text-center px-2 border-l border-[var(--border)]">
-            <span class="text-xs text-[var(--muted-foreground)] block">Avg Total</span>
-            <span class="text-lg font-bold text-[var(--foreground)]">44.8 pts</span>
-            <span class="text-[10px] text-[var(--muted-foreground)] block">14 Games</span>
-          </div>
-          <div class="text-center px-2 border-l border-[var(--border)]">
-            <span class="text-xs text-[var(--muted-foreground)] block">Top ATS Edge</span>
-            <span class="text-lg font-bold text-emerald-500">MIA +4.5</span>
-            <span class="text-[10px] text-[var(--muted-foreground)] block">81.9% cover (+11.5 pts)</span>
-          </div>
-          <div class="text-center px-2 border-l border-[var(--border)]">
-            <span class="text-xs text-[var(--muted-foreground)] block">Top Favorite</span>
-            <span class="text-lg font-bold text-[var(--foreground)]">CIN 72.5%</span>
-            <span class="text-[10px] text-[var(--muted-foreground)] block">Win Prob</span>
-          </div>
         </div>
       </div>
 
-      <!-- Controls: Tabs, Sort & Search -->
-      <div class="mt-6 pt-5 border-t border-[var(--border)] flex flex-col lg:flex-row gap-4 items-stretch lg:items-center justify-between">
+      <!-- Controls: Day Filters, Search & Sort -->
+      <div class="mt-4 flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
         
         <!-- Day Filters -->
         <div class="flex flex-wrap gap-1.5" id="day-filters">
-          <button data-day="all" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm">
-            All Games (14)
+          <button data-day="all" class="filter-day-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white shadow-sm transition">
+            All (14)
           </button>
-          <button data-day="Thursday" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]">
-            Thursday (1)
+          <button data-day="Thursday" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition">
+            Thu (1)
           </button>
-          <button data-day="Sunday Early" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]">
-            Sunday 1:00 PM (8)
+          <button data-day="Sunday Early" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition">
+            Sun 1 PM (8)
           </button>
-          <button data-day="Sunday Late" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]">
-            Sunday 4:00 PM (3)
+          <button data-day="Sunday Late" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition">
+            Sun 4 PM (3)
           </button>
-          <button data-day="Sunday Night" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]">
-            Sunday Night (1)
+          <button data-day="Sunday Night" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition">
+            SNF (1)
           </button>
-          <button data-day="Monday" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]">
-            Monday Night (1)
+          <button data-day="Monday" class="filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition">
+            MNF (1)
           </button>
         </div>
 
         <!-- Search & Sorting -->
-        <div class="flex flex-col sm:flex-row gap-2.5 items-stretch sm:items-center">
-          <div class="relative">
-            <input 
-              type="text" 
-              id="search-input" 
-              placeholder="Search team, QB, player..." 
-              class="w-full sm:w-56 px-3 py-1.5 text-xs bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
-            />
-          </div>
-
+        <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+          <input 
+            type="text" 
+            id="search-input" 
+            placeholder="Search team or player..." 
+            class="px-3 py-1.5 text-xs bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)] placeholder-[var(--muted-foreground)]"
+          />
           <select 
             id="sort-select" 
-            class="px-3 py-1.5 text-xs bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] rounded-lg focus:outline-none focus:ring-1 focus:ring-[var(--primary)]"
+            class="px-3 py-1.5 text-xs bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-[var(--primary)] cursor-pointer"
           >
-            <option value="time">Sort by: Kickoff Time</option>
-            <option value="ats_edge">Sort by: Largest Spread Edge (ATS)</option>
-            <option value="win_pct">Sort by: Most Lopsided Win %</option>
-            <option value="close_game">Sort by: Closest Game</option>
-            <option value="total_score">Sort by: Highest Projected Total</option>
+            <option value="time">Sort: Kickoff Time</option>
+            <option value="ats_edge">Sort: Largest Spread Edge</option>
+            <option value="win_pct">Sort: Most Lopsided Win %</option>
+            <option value="close_game">Sort: Closest Game</option>
+            <option value="total_score">Sort: Highest Total</option>
           </select>
         </div>
       </div>
@@ -268,14 +232,14 @@
         const spreadText = g.spread_line > 0 ? `${g.home_team} -${g.spread_line.toFixed(1)}` : (g.spread_line < 0 ? `${g.away_team} -${Math.abs(g.spread_line).toFixed(1)}` : 'PK');
 
         return `
-          <div onclick="openModal('${g.game_id}')" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm hover:border-[var(--primary)] hover:shadow-md cursor-pointer transition-all flex flex-col justify-between">
+          <div onclick="openModal('${g.game_id}')" class="bg-[var(--card)] border border-[var(--border)] rounded-2xl p-5 shadow-sm hover:border-[var(--primary)] hover:shadow-lg cursor-pointer transition-all flex flex-col justify-between group">
             
             <!-- Card Header -->
             <div>
               <div class="flex items-center justify-between text-xs text-[var(--muted-foreground)] pb-3 border-b border-[var(--border)]">
                 <span class="font-medium">${g.weekday} · ${g.gametime}</span>
-                <span class="bg-[var(--background)] px-2 py-0.5 rounded border border-[var(--border)] font-mono">
-                  Line: ${spreadText} | O/U ${g.total_line.toFixed(1)}
+                <span class="text-[var(--muted-foreground)] font-mono text-[11px]">
+                  ${spreadText} · O/U ${g.total_line.toFixed(1)}
                 </span>
               </div>
 
@@ -285,59 +249,47 @@
                 <!-- Away Team Row -->
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm" style="background-color: ${g.away_color}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0" style="background-color: ${g.away_color}">
                       ${g.away_team}
                     </div>
-                    <div>
-                      <div class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
-                        ${g.away_name}
-                        ${isAwayFav ? '<span class="text-xs text-emerald-500 font-normal">● Fav</span>' : ''}
-                      </div>
-                      <div class="text-xs text-[var(--muted-foreground)]">
-                        50% Band: ${g.away_p25} - ${g.away_p75} pts
-                      </div>
-                    </div>
+                    <span class="font-bold text-sm text-[var(--foreground)]">
+                      ${g.away_name}
+                    </span>
                   </div>
                   <div class="text-right">
                     <span class="text-2xl font-black text-[var(--foreground)]">${g.proj_away_score.toFixed(1)}</span>
-                    <div class="text-xs font-semibold ${isAwayFav ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}">
+                    <div class="text-xs font-semibold ${isAwayFav ? 'text-emerald-400' : 'text-[var(--muted-foreground)]'}">
                       ${g.p_away_win.toFixed(1)}% Win
                     </div>
                   </div>
                 </div>
 
                 <!-- Win Probability Bar -->
-                <div class="space-y-1">
-                  <div class="h-2 w-full bg-[var(--background)] rounded-full overflow-hidden flex border border-[var(--border)]">
+                <div class="space-y-1 py-0.5">
+                  <div class="h-1.5 w-full bg-[var(--background)] rounded-full overflow-hidden flex border border-[var(--border)]">
                     <div class="h-full transition-all duration-500" style="width: ${g.p_away_win}%; background-color: ${g.away_color}"></div>
                     <div class="h-full transition-all duration-500" style="width: ${g.p_home_win}%; background-color: ${g.home_color}"></div>
                   </div>
                   <div class="flex justify-between text-[11px] text-[var(--muted-foreground)]">
-                    <span>${g.away_team} ${g.p_away_win}%</span>
-                    <span class="font-medium text-[var(--foreground)]">Proj Total: ${g.proj_total.toFixed(1)}</span>
-                    <span>${g.p_home_win}% ${g.home_team}</span>
+                    <span>${g.away_team} ${g.p_away_win.toFixed(0)}%</span>
+                    <span class="text-[var(--foreground)] font-medium">Total ${g.proj_total.toFixed(1)}</span>
+                    <span>${g.p_home_win.toFixed(0)}% ${g.home_team}</span>
                   </div>
                 </div>
 
                 <!-- Home Team Row -->
-                <div class="flex items-center justify-between pt-1">
+                <div class="flex items-center justify-between">
                   <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm" style="background-color: ${g.home_color}">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm flex-shrink-0" style="background-color: ${g.home_color}">
                       ${g.home_team}
                     </div>
-                    <div>
-                      <div class="font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
-                        ${g.home_name}
-                        ${isHomeFav ? '<span class="text-xs text-emerald-500 font-normal">● Fav</span>' : ''}
-                      </div>
-                      <div class="text-xs text-[var(--muted-foreground)]">
-                        50% Band: ${g.home_p25} - ${g.home_p75} pts
-                      </div>
-                    </div>
+                    <span class="font-bold text-sm text-[var(--foreground)]">
+                      ${g.home_name}
+                    </span>
                   </div>
                   <div class="text-right">
                     <span class="text-2xl font-black text-[var(--foreground)]">${g.proj_home_score.toFixed(1)}</span>
-                    <div class="text-xs font-semibold ${isHomeFav ? 'text-emerald-500' : 'text-[var(--muted-foreground)]'}">
+                    <div class="text-xs font-semibold ${isHomeFav ? 'text-emerald-400' : 'text-[var(--muted-foreground)]'}">
                       ${g.p_home_win.toFixed(1)}% Win
                     </div>
                   </div>
@@ -346,24 +298,20 @@
               </div>
 
               <!-- Model Value & Edges -->
-              <div class="pt-3 border-t border-[var(--border)] flex flex-wrap gap-2 text-xs">
-                <span class="badge-ats px-2.5 py-1 rounded-md font-medium flex items-center gap-1" title="Model Margin Advantage: ${g.ats_edge >= 0 ? '+' : ''}${g.ats_edge.toFixed(1)} pts">
-                  Spread Edge: <strong>${g.ats_pick}</strong> (${g.ats_cover_pct != null ? g.ats_cover_pct.toFixed(1) + '%' : (g.ats_edge >= 0 ? '+' : '') + g.ats_edge.toFixed(1)})
+              <div class="pt-3 border-t border-[var(--border)] flex items-center justify-between text-xs">
+                <span class="badge-ats px-2.5 py-1 rounded-md font-medium">
+                  Spread: <strong class="text-emerald-400 font-semibold">${g.ats_pick}</strong> <span class="opacity-80">(${g.ats_cover_pct != null ? g.ats_cover_pct.toFixed(0) + '%' : (g.ats_edge >= 0 ? '+' : '') + g.ats_edge.toFixed(1)})</span>
                 </span>
-                <span class="badge-ou px-2.5 py-1 rounded-md font-medium flex items-center gap-1" title="Model Total Discrepancy: ${g.ou_edge.toFixed(1)} pts">
-                  Total Edge: <strong>${g.ou_pick}</strong> (${g.ou_cover_pct != null ? g.ou_cover_pct.toFixed(1) + '%' : g.ou_edge.toFixed(1)})
+                <span class="badge-ou px-2.5 py-1 rounded-md font-medium">
+                  Total: <strong class="text-blue-400 font-semibold">${g.ou_pick}</strong> <span class="opacity-80">(${g.ou_cover_pct != null ? g.ou_cover_pct.toFixed(0) + '%' : g.ou_edge.toFixed(1)})</span>
                 </span>
               </div>
             </div>
 
-            <!-- Footer: Quick Stats & Details Action -->
-            <div class="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between">
-              <span class="text-xs font-semibold text-[var(--primary)] flex items-center gap-1">
-                Combo Props, Game Lines & Deciles →
-              </span>
-              <span class="text-xs text-[var(--muted-foreground)]">
-                ${(g.players?.home || []).length + (g.players?.away || []).length} Skill Players
-              </span>
+            <!-- Footer: Clean Action Link -->
+            <div class="mt-3 pt-3 border-t border-[var(--border)] flex items-center justify-between text-xs text-[var(--muted-foreground)] group-hover:text-[var(--foreground)] transition-colors">
+              <span>Matchup Details & Props</span>
+              <span class="text-[var(--primary)] font-medium">→</span>
             </div>
 
           </div>
@@ -1822,9 +1770,9 @@
       document.getElementById('sort-select').value = 'time';
       document.querySelectorAll('.filter-day-btn').forEach(btn => {
         if (btn.dataset.day === 'all') {
-          btn.className = 'filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm';
+          btn.className = 'filter-day-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white shadow-sm transition';
         } else {
-          btn.className = 'filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]';
+          btn.className = 'filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition';
         }
       });
       renderGames();
@@ -1835,9 +1783,9 @@
       const btn = e.target.closest('.filter-day-btn');
       if (!btn) return;
       document.querySelectorAll('.filter-day-btn').forEach(b => {
-        b.className = 'filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--background)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)]';
+        b.className = 'filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--card)] text-[var(--muted-foreground)] hover:text-[var(--foreground)] border border-[var(--border)] transition';
       });
-      btn.className = 'filter-day-btn px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm';
+      btn.className = 'filter-day-btn px-3 py-1.5 text-xs font-semibold rounded-lg bg-[var(--primary)] text-white shadow-sm transition';
       currentFilterDay = btn.dataset.day;
       renderGames();
     });
